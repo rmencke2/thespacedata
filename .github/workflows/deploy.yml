@@ -41,7 +41,7 @@ jobs:
           docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
           echo "IMAGE_URI=${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${IMAGE_TAG}" >> $GITHUB_ENV
 
-        - name: Create or update App Runner service
+      - name: Create or update App Runner service
         shell: bash
         run: |
           set -e
@@ -65,7 +65,7 @@ jobs:
 
           SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
 
-          # ✅ AuthenticationConfiguration is a sibling of ImageRepository
+          # AuthenticationConfiguration is a sibling of ImageRepository
           SRC_CFG="ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8000,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AuthenticationConfiguration={AccessRoleArn=${ROLE_ARN}},AutoDeploymentsEnabled=true"
 
           if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" == "None" ]; then
