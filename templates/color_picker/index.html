@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Color Picker · thespacedata{% endblock %}
+{% block content %}
+<h1>Image → Color Picker</h1>
+<p>Upload an image and we’ll extract a palette.</p>
+
+<form action="{% url 'color_picker:color_extract' %}" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <input type="file" name="image" accept="image/*" required />
+  <label style="margin-left:10px;">
+    Colors:
+    <input type="number" name="colors" value="6" min="3" max="12" style="width:70px;">
+  </label>
+  <button type="submit">Extract</button>
+</form>
+
+{% if errors %}
+  <pre style="color:#b00020">{{ errors }}</pre>
+{% endif %}
+
+{% endblock %}

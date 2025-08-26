@@ -16,9 +16,9 @@ SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
     "django-insecure-0k$54hs5d!f!b-g4vh0a267p9s(ajj8#-unwws8ap%qp_29mms",
 )
-
+DEBUG = True
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+#DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
@@ -97,3 +97,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]  # for dev assets
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# Add media for color picker
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

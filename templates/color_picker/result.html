@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Palette Result{% endblock %}
+{% block content %}
+
+<style>
+:root {
+{{ css_vars }}
+}
+.palette { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
+.swatch { width:120px; border-radius:10px; overflow:hidden; border:1px solid #e5e5e5; cursor:pointer; }
+.swatch .chip { height:60px; }
+.swatch .meta { font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; padding:8px; }
+.swatch[data-active="true"] { outline:3px solid var(--primary); outline-offset:2px; }
+.preview { max-width:100%; border-radius:12px; border:1px solid #eee; }
+.badge { display:inline-block; font:12px/1 ui-monospace, Menlo, monospace; padding:3px 6px; border-radius:6px; border:1px solid #ddd; margin-left:6px; }
+.sample {
+  margin-top:14px; padding:12px; border-radius:10px; border:1px dashed #ddd;
+  background: color-mix(in srgb, var(--primary) 12%, white);
+}
+.sample h4 { margin:0 0 8px; }
+.sample .pill { display:inline-block; padding:6px 10px; border-radius:999px;
+  background: var(--primary); color:white; font-weight:600; }
+</style>
+
+<h1>Palette extracted
+  <span class="badge">dominant: <span id="domhex">{{ dominant.hex }}</span></span>
+</h1>
+
+<div class="grid" style="display:grid; grid-template-columns:1fr 320px; gap:20px;">
+  <div>
+    <p>Click a swatch to set the <strong>dominant</strong> (&rarr; CSS <code>--primary</code> updates live).</p>
+    <div class="palette" id="palette">
+      {% for c in palette %}
+      <div class="swatch" data-hex="{{ c.hex }}" {% if c.hex == dominant.hex %}data-active="true"{% endif %}>
+        <div class="chip" style="background: {{ c.hex }};"></div>
+        <div class="meta">
+          {{ c.hex }}<br>
+          rgb({{ c.rgb.0 }}, {{ c.rgb.1 }}, {{ c.rgb.2 }})<br>
+          hsl({{ c.hsl.h }}, {{ c.hsl.s }}%, {{ c.hsl.l }}%)
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3>CSS Variables</h3>
+    <pre class="code" id="cssvars" style="font-family:ui-monospace,Menlo,monospace">:root {
+{{ css_vars }}
+}</pre>
+
+    <div class="sample">
+      <h4>Preview</h4>
+      <span class="pill">Primary</span>
+    </div>
+
+    <p style="margin-top:12px;"><a href="{% url 'color_picker:index' %}">&larr; Try another image</a></p>
+  </div>
+
+  <div>
+    <h3>Source Image</h3>
+    <img class="preview" src="{{ image_path }}" alt="Uploaded" />
+  </div>
+</div>
+
+<script>
+(function(){
+  const root = document.documentElement;
+  const palette = document.getElementById('palette');
+  const domHexEl = document.getElementById('domhex');
+  const cssVarsEl = document.getElementById('cssvars');
+
+  function setPrimary(hex) {
+    root.style.setProperty('--primary', hex);
+    domHexEl.textContent = hex;
+
+    // update CSS block text (keeps the rest intact)
+    const lines = cssVarsEl.textContent.split('\n');
+    const idx = lines.findIndex(l => l.trim().startsWith('--primary:'));
+    if (idx >= 0) lines[idx] = `--primary: ${hex};`;
+    else lines.splice(lines.length-1, 0, `--primary: ${hex};`);
+    cssVarsEl.textContent = lines.join('\n');
+  }
+
+  palette.addEventListener('click', (e) => {
+    const sw = e.target.closest('.swatch');
+    if (!sw) return;
+    const hex = sw.getAttribute('data-hex');
+    setPrimary(hex);
+    // toggle active ring
+    document.querySelectorAll('.swatch[data-active="true"]').forEach(el => el.removeAttribute('data-active'));
+    sw.setAttribute('data-active', 'true');
+  });
+})();
+</script>
+
+{% endblock %}

@@ -1,3 +1,10 @@
 from django.urls import path
 from . import views
-urlpatterns = [ path("", views.index, name="color_index"), ]
+
+app_name = "color_picker"
+
+urlpatterns = [
+    path("", views.index, name="index"),
+    path("extract/", views.extract, name="color_extract"),
+    path("api/extract/", views.api_extract, name="api_extract"),
+]
