@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Palette extracted</title>
+<style>
+  :root { --primary: {{ dominant.hex }}; }
+
+  body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; margin: 24px; color: #111; }
+  .wrap { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+
+  h1 { font-size: 32px; margin: 0 0 8px; }
+  .subtitle { font-size: 14px; color: #555; margin-bottom: 16px; }
+  .bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  .swatch {
+    width: 140px; height: 84px; border-radius: 12px 12px 0 0;
+  }
+  .card {
+    width: 140px; border-radius: 12px; box-shadow: 0 1px 2px rgb(16 24 40 / .06);
+    border: 1px solid #e5e7eb; overflow: hidden; background: #fff; cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease, border-color .08s ease;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgb(16 24 40 / .12); }
+  .card.active { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .card .meta { padding: 10px 12px; font-size: 12px; line-height: 1.25; }
+  .meta code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+  .side { position: sticky; top: 16px; border-radius: 16px; border: 1px solid #e5e7eb; padding: 16px; background: #fff; }
+  .side h2 { margin: 0 0 12px; }
+  .dot { width: 120px; height: 120px; border-radius: 999px; border: 1px solid #e5e7eb; margin-bottom: 12px; }
+  .kv { font-size: 14px; line-height: 1.6; }
+  .kv .k { width: 72px; display: inline-block; color: #555; }
+  .btns { display: flex; gap: 8px; margin-top: 8px; }
+  button.copy { font-size: 12px; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 8px; background: #fff; cursor: pointer; }
+  button.copy:hover { background: #f8fafc; }
+  .source { border-radius: 16px; border: 1px solid #e5e7eb; padding: 12px; }
+  .src-img { width: 100%; border-radius: 12px; }
+
+  pre.vars {
+    margin-top: 16px; background: #0b1020; color: #d9e1ff; padding: 12px; border-radius: 12px; font-size: 12px; overflow: auto;
+  }
+</style>
+</head>
+<body>
+  <h1>Palette extracted <span class="subtitle">(<strong>dominant</strong>: <code id="dominantHex">{{ dominant.hex }}</code>)</span></h1>
+
+  <div class="wrap">
+    <main>
+      <div class="bar" id="swatches">
+        {% for c in palette %}
+        <div class="card{% if forloop.first %} active{% endif %}" data-hex="{{ c.hex }}" data-rgb="{{ c.rgb }}" data-hsl="{{ c.hsl }}">
+          <div class="swatch" style="background: {{ c.hex }}"></div>
+          <div class="meta">
+            <div><code>{{ c.hex }}</code></div>
+            <div>{{ c.rgb }}</div>
+            <div><code>{{ c.hsl }}</code></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <h3>CSS Variables</h3>
+      <pre class="vars" id="cssVars">:root {
+  {% for c in palette %}
+  --color-{{ forloop.counter }}: {{ c.hex }};
+  {% endfor %}
+  --primary: {{ dominant.hex }};
+}</pre>
+    </main>
+
+    <aside class="side">
+      <h2>Selected Color</h2>
+      <div class="dot" id="dot" style="background: {{ dominant.hex }}"></div>
+      <div class="kv">
+        <div><span class="k">HEX</span><code id="d_hex">{{ dominant.hex }}</code></div>
+        <div><span class="k">RGB</span><span id="d_rgb">{{ dominant.rgb }}</span></div>
+        <div><span class="k">HSL</span><code id="d_hsl">{{ dominant.hsl }}</code></div>
+      </div>
+      <div class="btns">
+        <button class="copy" data-target="d_hex">Copy HEX</button>
+        <button class="copy" data-target="d_rgb">Copy RGB</button>
+        <button class="copy" data-target="d_hsl">Copy HSL</button>
+      </div>
+
+      {% if image_url %}
+      <div class="source" style="margin-top:16px;">
+        <strong>Source Image</strong>
+        <img class="src-img" src="{{ image_url }}" alt="Uploaded image" />
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+
+<script>
+  const $ = (q) => document.querySelector(q);
+  const $$ = (q) => Array.from(document.querySelectorAll(q));
+
+  const cssVarsEl = $("#cssVars");
+  const dominantHexEl = $("#dominantHex");
+  const dot = $("#dot");
+  const d_hex = $("#d_hex");
+  const d_rgb = $("#d_rgb");
+  const d_hsl = $("#d_hsl");
+
+  // click to select → updates details and :root --primary
+  $$("#swatches .card").forEach(card => {
+    card.addEventListener("click", () => {
+      $$("#swatches .card").forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+      const hex = card.dataset.hex;
+      const rgb = card.dataset.rgb;
+      const hsl = card.dataset.hsl;
+
+      d_hex.textContent = hex;
+      d_rgb.textContent = rgb;
+      d_hsl.textContent = hsl;
+      dot.style.background = hex;
+      document.documentElement.style.setProperty("--primary", hex);
+      dominantHexEl.textContent = hex;
+
+      // regenerate CSS var block (keeps the --primary live)
+      const lines = cssVarsEl.textContent.split("\n");
+      cssVarsEl.textContent = lines.map(line => line.trimStart().startsWith("--primary:")
+        ? `  --primary: ${hex};`
+        : line).join("\n");
+    });
+  });
+
+  // copy buttons
+  $$(".copy").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.target;
+      const text = document.getElementById(id).textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        const old = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = old), 900);
+      } catch { /* ignore */ }
+    });
+  });
+</script>
+</body>
+</html>
