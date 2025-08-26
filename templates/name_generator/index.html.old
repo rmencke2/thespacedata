@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Business Name Generator{% endblock %}
+
+{% block content %}
+<style>
+  /* ---- Page shell ---- */
+  .ng-container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .ng-title { font-size: clamp(28px, 3.5vw, 40px); font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 20px; }
+
+  /* ---- Card ---- */
+  .ng-card { background: #fff; border: 1px solid #eaeaea; border-radius: 16px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+  .ng-card + .ng-card { margin-top: 20px; }
+
+  /* ---- Form ---- */
+  .ng-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 820px) { .ng-grid { grid-template-columns: 1fr 1fr; } }
+  .ng-field { display: flex; flex-direction: column; gap: 8px; }
+  .ng-label { font-weight: 600; color: #1f2937; }
+  .ng-hint { font-size: 12px; color: #6b7280; margin-top: -6px; }
+  .ng-input, .ng-select {
+    width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 12px;
+    background: #f9fafb; outline: none; transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .ng-input:focus, .ng-select:focus {
+    background: #fff; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  }
+  .ng-actions { margin-top: 6px; }
+  .ng-button {
+    width: 100%; padding: 13px 16px; border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
+    background: #111827; color: #fff; transition: transform .02s ease, filter .15s;
+  }
+  .ng-button:hover { filter: brightness(1.06); }
+  .ng-button:active { transform: translateY(1px); }
+
+  /* ---- Sections ---- */
+  .ng-section-title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 10px; }
+  .ng-muted { color: #6b7280; font-size: 13px; }
+
+  /* ---- Suggestions list ---- */
+  .ng-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .ng-item {
+    padding: 12px 14px; border: 1px solid #eaeaea; background: #fafafa; border-radius: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .ng-name { font-weight: 600; color: #111827; }
+  .ng-badge { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
+
+  /* ---- Empty state ---- */
+  .ng-empty {
+    border: 1px dashed #e5e7eb; background: #fbfbfd; color: #6b7280; text-align: center; padding: 28px;
+    border-radius: 14px; font-size: 14px;
+  }
+</style>
+
+<div class="ng-container">
+
+  <h1 class="ng-title">Business Name Generator</h1>
+
+  <!-- Generator form -->
+  <div class="ng-card">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="ng-grid">
+        <div class="ng-field" style="grid-column: 1 / -1;">
+          <label class="ng-label" for="keywords">Keywords</label>
+          <input class="ng-input" id="keywords" name="keywords" type="text"
+                 value="{{ keywords|default:'' }}" placeholder="coffee, cozy, neighborhood" />
+          <div class="ng-hint">Comma-separated. Example: <em>coffee, cozy, neighborhood</em></div>
+        </div>
+
+        <div class="ng-field">
+          <label class="ng-label" for="industry">Industry</label>
+          <input class="ng-input" id="industry" name="industry" type="text"
+                 value="{{ industry|default:'' }}" placeholder="cafe / SaaS / consulting..." />
+        </div>
+
+        <div class="ng-field">
+          <label class="ng-label" for="style">Style</label>
+          <input class="ng-input" id="style" name="style" type="text"
+                 value="{{ style|default:'' }}" placeholder="modern, playful, premium..." />
+        </div>
+
+        <div class="ng-field">
+          <label class="ng-label" for="count">How many?</label>
+          <input class="ng-input" id="count" name="count" type="number" min="1" max="20"
+                 value="{{ count|default:6 }}" />
+        </div>
+
+        <div class="ng-field" style="grid-column: 1 / -1;">
+          <div class="ng-actions">
+            <button class="ng-button" type="submit">Generate</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Suggestions -->
+  <ol class="list-decimal pl-6 space-y-3">
+    {% for name in names %}
+    <li class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-medium">{{ name }}</span>
+        <span class="rounded-full border px-2.5 py-0.5 text-xs
+                     {% if used_openai %}border-indigo-300 text-indigo-700 bg-indigo-50
+                     {% else %}border-slate-300 text-slate-700 bg-slate-50{% endif %}">
+          {% if used_openai %}OpenAI{% else %}Local{% endif %}
+        </span>
+      </div>
+    </li>
+    {% empty %}
+    <li class="text-slate-500">No suggestions yet.</li>
+    {% endfor %}
+  </ol>
+  <!-- Recent history -->
+  <section class="mt-10">
+    <h2 class="text-2xl font-semibold mb-4">Recent history</h2>
+    <ul class="space-y-2">
+      {% for item in recent %}
+        <li>
+          <a class="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
+             href="{% url 'name_generator:generate' %}?id={{ item.id }}">
+            <div class="flex items-center justify-between">
+              <div class="truncate">
+                <span class="font-medium">{{ item.keywords }}</span>
+                <span class="text-slate-500">· {{ item.industry }}</span>
+                {% if item.style %}<span class="text-slate-400">· {{ item.style }}</span>{% endif %}
+              </div>
+              <span class="text-xs text-slate-500">{{ item.created_at|date:"M d, H:i" }}</span>
+            </div>
+          </a>
+        </li>
+      {% empty %}
+        <li class="text-slate-500">No recent runs yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+</div>
+{% endblock %}

@@ -28,7 +28,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("color/", include("color_picker.urls")),
     path("logo/", include("logo_generator.urls")),
-    path("names/", include("name_generator.urls")),
+    path("names/", include("name_generator.urls", namespace="name_generator")),
     path("users/", include("users.urls")),
     path("color/", include("color_picker.urls")),
     ]
