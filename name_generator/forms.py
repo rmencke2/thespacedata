@@ -1,25 +1,36 @@
 from django import forms
 
 class NameRequestForm(forms.Form):
-    keywords = forms.CharField(
-        label="Keywords",
-        help_text="Comma-separated: e.g. coffee, cozy, neighborhood",
-        max_length=200,
-        widget=forms.TextInput(attrs={"placeholder": "coffee, cozy, neighborhood"})
+    prompt = forms.CharField(
+        label="Describe what you want",
+        widget=forms.Textarea(attrs={
+            "id": "id_prompt",  # explicit id (optional—Django auto-adds)
+            "rows": 4,
+            "placeholder": "e.g. Sustainable laundry pickup for busy families; fresh, modern, upbeat; avoid cheesy puns; 8–12 letter names.",
+            "class": "w-full rounded-md border px-3 py-2",
+            "autofocus": "autofocus",
+            "required": "required",
+        }),
     )
+    # (industry / style / count optional)
+    # optional advanced fields if you use them
+    count = forms.IntegerField(initial=10, min_value=1, max_value=50, required=False)
+    style = forms.CharField(required=False)
+
+    # Advanced (optional)
     industry = forms.CharField(
-        label="Industry",
-        required=False,
-        max_length=120,
-        widget=forms.TextInput(attrs={"placeholder": "cafe / SaaS / consulting ..."})
+        label="Industry (optional)", required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-md border px-3 py-2"})
     )
     style = forms.CharField(
-        label="Style",
-        required=False,
-        max_length=80,
-        widget=forms.TextInput(attrs={"placeholder": "modern, playful, premium ..."})
+        label="Style / Tone (optional)", required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-md border px-3 py-2"})
     )
     count = forms.IntegerField(
-        label="How many names?",
-        min_value=3, max_value=12, initial=6
+        label="How many suggestions?", required=False, min_value=3, max_value=25, initial=10,
+        widget=forms.NumberInput(attrs={"class": "w-full rounded-md border px-3 py-2"})
     )
+
+    def clean_count(self):
+        v = self.cleaned_data.get("count")
+        return v or 10

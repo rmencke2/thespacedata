@@ -1,155 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Business Name Generator{% endblock %}
+
+{% block title %}Business Name Generator · thespacedata{% endblock %}
+
 {% block content %}
-{% load form_extras %}
-<style>
-  /* ---- Page shell ---- */
-  .ng-container { max-width: 1100px; margin: 0 auto; padding: 24px; }
-  .ng-title { font-size: clamp(28px, 3.5vw, 40px); font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 20px; }
+<h1 class="text-4xl font-semibold mb-8">Business Name Generator</h1>
 
-  /* ---- Card ---- */
-  .ng-card { background: #fff; border: 1px solid #eaeaea; border-radius: 16px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
-  .ng-card + .ng-card { margin-top: 20px; }
+<form id="name-form" method="post" class="space-y-6">
+  {% csrf_token %}
 
-  /* ---- Form ---- */
-  .ng-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-  @media (min-width: 820px) { .ng-grid { grid-template-columns: 1fr 1fr; } }
-  .ng-field { display: flex; flex-direction: column; gap: 8px; }
-  .ng-label { font-weight: 600; color: #1f2937; }
-  .ng-hint { font-size: 12px; color: #6b7280; margin-top: -6px; }
-  .ng-input, .ng-select {
-    width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 12px;
-    background: #f9fafb; outline: none; transition: border-color .15s, background .15s, box-shadow .15s;
-  }
-  .ng-input:focus, .ng-select:focus {
-    background: #fff; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15);
-  }
-  .ng-actions { margin-top: 6px; }
-  .ng-button {
-    width: 100%; padding: 13px 16px; border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
-    background: #111827; color: #fff; transition: transform .02s ease, filter .15s;
-  }
-  .ng-button:hover { filter: brightness(1.06); }
-  .ng-button:active { transform: translateY(1px); }
+  <!-- Single prompt (default) -->
+  <div>
+    <label class="block text-sm font-medium mb-1" for="id_prompt">
+      Describe what you want
+    </label>
 
-  /* ---- Sections ---- */
-  .ng-section-title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 10px; }
-  .ng-muted { color: #6b7280; font-size: 13px; }
+    {{ form.prompt }}  {# <-- THIS actually renders the textarea #}
 
-  /* ---- Suggestions list ---- */
-  .ng-list { list-style: decimal; padding-left: 1.25rem; margin: 0; display: grid; gap: 10px; }
-  .ng-item {
-    padding: 12px 14px; border: 1px solid #eaeaea; background: #fafafa; border-radius: 12px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .ng-name { font-weight: 600; color: #111827; }
-  .ng-badge { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
-
-  /* ---- Empty state ---- */
-  .ng-empty {
-    border: 1px dashed #e5e7eb; background: #fbfbfd; color: #6b7280; text-align: center; padding: 28px;
-    border-radius: 14px; font-size: 14px;
-  }
-</style>
-
-<div class="ng-container">
-
-  <h1 class="ng-title">Business Name Generator</h1>
-
-  <!-- Generator form -->
-  <div class="ng-card">
-    <form method="post" novalidate>
-        {% csrf_token %}
-      
-        <!-- DESCRIPTION (primary input) -->
-        <div class="ng-field" style="grid-column: 1 / -1;">
-          <label class="ng-label" for="description">Describe what you want</label>
-          <textarea id="description" name="description" rows="4"
-                    class="ng-input" placeholder="e.g., A fun, modern name for a vegan shoe brand that feels Italian but global.">{{ description|default_if_none:'' }}</textarea>
-          <div class="ng-hint">Write naturally. We'll turn this into a great prompt.</div>
-        </div>
-      
-        <!-- COLLAPSIBLE: ADVANCED OPTIONS -->
-        <details class="ng-card" style="margin-top:16px;" {% if keywords or industry or style or count %}open{% endif %}>
-          <summary class="ng-label" style="cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px;">
-            <span>More options (keywords, industry, style, count)</span>
-          </summary>
-      
-          <div class="ng-grid" style="margin-top:14px;">
-            <div class="ng-field">
-              <label class="ng-label" for="{{ form.keywords.id_for_label }}">Keywords</label>
-              {{ form.keywords|add_class:"ng-input" }}
-              <div class="ng-hint">Comma separated (e.g., cozy, urban, artisan)</div>
-            </div>
-      
-            <div class="ng-field">
-              <label class="ng-label" for="{{ form.industry.id_for_label }}">Industry</label>
-              {{ form.industry|add_class:"ng-input" }}
-            </div>
-      
-            <div class="ng-field">
-              <label class="ng-label" for="{{ form.style.id_for_label }}">Style</label>
-              {{ form.style|add_class:"ng-input" }}
-              <div class="ng-hint">Examples: playful, premium, minimal, tech-forward</div>
-            </div>
-      
-            <div class="ng-field">
-              <label class="ng-label" for="{{ form.count.id_for_label }}">How many?</label>
-              {{ form.count|add_class:"ng-input" }}
-            </div>
-          </div>
-        </details>
-      
-        <div class="ng-field" style="grid-column: 1 / -1; margin-top:16px;">
-          <div class="ng-actions">
-            <button class="ng-button" type="submit">Generate</button>
-          </div>
-        </div>
-      </form>
-  </div>
-
-  <!-- Suggestions -->
-  <div class="ng-card">
-    <h2 class="ng-section-title">Suggestions</h2>
-    {% if names %}
-      <ol class="ng-list">
-        {% for name in names %}
-          <li class="ng-item">
-            <span class="ng-name">{{ name }}</span>
-            <span class="ng-badge">{% if used_openai %}OpenAI{% else %}Local{% endif %}</span>
-          </li>
-        {% endfor %}
-      </ol>
-    {% else %}
-      <div class="ng-empty">No suggestions yet.</div>
+    {% if form.prompt.errors %}
+      {% for e in form.prompt.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ e }}</p>
+      {% endfor %}
     {% endif %}
+
+    <p class="mt-1 text-xs text-slate-500">
+      Tip: you can add hints like <code>industry: fintech</code> or
+      <code>style: playful, premium</code>.
+    </p>
   </div>
 
-  <!-- Recent history -->
-  <div class="ng-card">
-    <h2 class="ng-section-title">Recent history</h2>
-    {% if recent %}
-      <ul style="list-style:none; padding:0; margin:0; display:grid; gap:10px;">
-        {% for item in recent %}
+  <!-- Advanced options (collapsible) -->
+  <details class="rounded-lg border border-slate-200">
+    <summary class="px-4 py-3 cursor-pointer select-none font-medium">
+      Advanced options
+    </summary>
+    <div class="p-4 space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1" for="id_industry">Industry</label>
+        {{ form.industry }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="id_style">Style keywords</label>
+        {{ form.style }}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="id_count">How many?</label>
+        {{ form.count }}
+      </div>
+    </div>
+  </details>
+
+  <div class="flex items-center gap-4">
+    <button type="submit"
+            class="inline-flex items-center px-5 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+      Generate
+    </button>
+    <p class="text-sm text-slate-500">Press <b>Enter</b> to submit · <b>Shift+Enter</b> for newline</p>
+  </div>
+</form>
+
+<!-- Suggestions -->
+<section class="mt-10">
+  <h2 class="text-2xl font-semibold mb-4">Suggestions</h2>
+  {% if names and names|length %}
+    <ol class="list-decimal pl-6 space-y-3">
+      {% for n in names %}
+        <li class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div class="flex items-center justify-between gap-3">
+            <span class="font-medium">{{ n }}</span>
+            {% if used_openai is not None %}
+              <span class="rounded-full border px-2.5 py-0.5 text-xs
+                           {% if used_openai %}border-indigo-300 text-indigo-700 bg-indigo-50
+                           {% else %}border-slate-300 text-slate-700 bg-slate-50{% endif %}">
+                {% if used_openai %}OpenAI{% else %}Local{% endif %}
+              </span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <ol class="list-decimal pl-6">
+      <li class="text-slate-500">No suggestions yet.</li>
+    </ol>
+  {% endif %}
+</section>
+
+<!-- Recent history -->
+<section class="mt-10">
+  <h2 class="text-2xl font-semibold mb-4">Recent history</h2>
+  {% if recent %}
+    <ul class="space-y-2">
+      {% for item in recent %}
         <li>
-          <a href="{% url 'name_generator:generate' %}?id={{ item.id }}"
-             style="display:block; text-decoration:none; color:inherit;">
-            <div class="ng-item" style="justify-content:space-between;">
-              <div class="ng-muted" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                <strong>{{ item.keywords }}</strong>
-                · {{ item.industry }}
-                {% if item.style %} · {{ item.style }}{% endif %}
+          <a class="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
+             href="{% url 'name_generator:generate' %}?id={{ item.id }}">
+            <div class="flex items-center justify-between">
+              <div class="truncate">
+                <span class="font-medium">{{ item.prompt|default:item.keywords|truncatechars:80 }}</span>
               </div>
-              <span class="ng-muted" style="font-size:12px;">{{ item.created_at|date:"M d, H:i" }}</span>
+              <span class="text-xs text-slate-500">{{ item.created_at|date:"M d, H:i" }}</span>
             </div>
           </a>
         </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="ng-empty">No recent runs yet.</div>
-    {% endif %}
-  </div>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-slate-500">No runs yet.</p>
+  {% endif %}
+</section>
 
-</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+  // Press Enter to submit; Shift+Enter for newline
+  (function () {
+    const form = document.getElementById('name-form');
+    const ta   = document.getElementById('id_prompt');
+    if (form && ta) {
+      ta.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        }
+      });
+    }
+  }());
+</script>
 {% endblock %}

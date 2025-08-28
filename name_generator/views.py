@@ -1,66 +1,59 @@
 # name_generator/views.py
-import re
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from .forms import NameRequestForm
 from .models import NameIdea
-from .services import openai_generate, local_generate
+from .services import openai_generate, local_generate  # both should accept (prompt, count=6)
 
-_number_prefix = re.compile(r"^\s*\d+[\.)-]\s*")
-def _clean_names(names):
-    return [_number_prefix.sub("", n).strip() for n in (names or []) if n and n.strip()]
-
-def _coerce_int(val, default):
-    try:
-        return max(1, min(20, int(val)))
-    except Exception:
-        return default
 
 def generate(request):
-    used_openai = False
     names = []
-    description = (request.POST.get("description") or request.GET.get("description") or "").strip()
+    used_openai = None
+    latest = None
 
     if request.method == "POST":
         form = NameRequestForm(request.POST)
         if form.is_valid():
-            keywords = form.cleaned_data.get("keywords", "").strip()
-            industry = form.cleaned_data.get("industry", "").strip()
-            style    = form.cleaned_data.get("style", "").strip()
+            prompt   = form.cleaned_data["prompt"]
+            industry = (form.cleaned_data.get("industry") or "").strip()
+            style    = (form.cleaned_data.get("style") or "").strip()
             count    = form.cleaned_data.get("count") or 6
-        else:
-            # Fallback: accept description-only posts
-            keywords = (request.POST.get("keywords") or "").strip()
-            industry = (request.POST.get("industry") or "").strip()
-            style    = (request.POST.get("style") or "").strip()
-            count    = _coerce_int(request.POST.get("count"), 6)
 
-        # Try OpenAI first (with description)
-        names = openai_generate(description, keywords, industry, style, count) or []
-        used_openai = bool(names)
-        if not names:
-            names = local_generate(keywords, industry, style, count) or []
-        names = _clean_names(names)
+            # Fold optional hints into the single prompt so we can keep a simple generator signature.
+            extra_bits = []
+            if industry:
+                extra_bits.append(f"industry: {industry}")
+            if style:
+                extra_bits.append(f"style: {style}")
+            full_prompt = prompt
+            if extra_bits:
+                full_prompt = f"{prompt}\n\nHints: " + "; ".join(extra_bits)
 
-        if names:
+            # Call generators with the signature they support: (prompt, count)
+            names = openai_generate(full_prompt, count) or []
+            used_openai = bool(names)
+            if not names:
+                names = local_generate(full_prompt, count)
+                used_openai = False
+
             idea = NameIdea.objects.create(
                 user=request.user if request.user.is_authenticated else None,
-                keywords=keywords, industry=industry, style=style,
+                keywords=prompt,                 # store the free-text prompt here
+                industry=industry,
+                style=style,
                 result="\n".join(names),
             )
-            src = "ai" if used_openai else "local"
-            return redirect(f"{reverse('name_generator:generate')}?id={idea.id}&src={src}")
-        # If we got here, generation failed—fall through to render with an empty list
+            return redirect(reverse("name_generator:generate") + f"?id={idea.id}")
     else:
         form = NameRequestForm()
 
-    # Load specific run (after redirect)
-    if (id_param := request.GET.get("id")):
+    # If redirected back with ?id=, hydrate `names` for the Suggestions list
+    id_param = request.GET.get("id")
+    if id_param:
         latest = NameIdea.objects.filter(id=id_param).first()
-        if latest and not names:
-            names = _clean_names(latest.result.splitlines())
+        if latest and latest.result:
+            names = [n.strip() for n in latest.result.splitlines() if n.strip()]
 
-    used_openai = (request.GET.get("src") == "ai")
     recent = NameIdea.objects.order_by("-created_at")[:10]
 
     return render(
@@ -68,9 +61,9 @@ def generate(request):
         "name_generator/generate.html",
         {
             "form": form,
-            "description": description,
             "names": names,
-            "used_openai": used_openai,
             "recent": recent,
+            "used_openai": used_openai,
+            "latest": latest,
         },
     )

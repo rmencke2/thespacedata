@@ -1,67 +1,118 @@
-import os
-import json
-import re
-import logging
-
-from openai import OpenAI
-
-logger = logging.getLogger(__name__)
-
-_client = None
-api_key = os.getenv("OPENAI_API_KEY")
-if api_key:
-    _client = OpenAI(api_key=api_key)
-else:
-    logger.warning("OPENAI_API_KEY not set; falling back to local generator.")
-
 # name_generator/services.py
-import os, re, json, logging
-from openai import OpenAI
-logger = logging.getLogger(__name__)
+import json, re
+from typing import List
+from django.conf import settings
 
-_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+try:
+    from openai import OpenAI
+except Exception:  # older SDKs
+    OpenAI = None  # type: ignore
 
-def openai_generate(description: str, keywords: str, industry: str, style: str, count: int = 6):
-    if not _client:
-        return None
+_client = OpenAI(api_key=settings.OPENAI_API_KEY) if (OpenAI and settings.OPENAI_API_KEY) else None
+
+
+def _postprocess(raw: str, count: int) -> List[str]:
+    """Extract a clean list of names from either JSON or plain text."""
+    # Try JSON array first (allow extra text around it)
     try:
-        desc = description.strip() or "—"
-        kw   = (keywords or "—").strip()
-        ind  = (industry or "general").strip()
-        sty  = (style or "any").strip()
-
-        prompt = f"""
-You are a world-class branding consultant. Generate {count} creative, memorable, high-quality business names.
-
-Guidelines:
-- 1–3 words, catchy, easy to pronounce and spell.
-- Avoid clichés and overused suffixes (-ify, -ly, -ster).
-- Clever wordplay, metaphor, and subtle mashups welcome.
-- Suitable for .com and social handles (avoid numbers/hyphens).
-- Return ONLY a list of names, one per line. No bullets, no numbering, no explanations.
-
-User description: {desc}
-Keywords: {kw}
-Industry: {ind}
-Style: {sty}
-"""
-
-        resp = _client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.9,
-        )
-        text = resp.choices[0].message.content.strip()
-
-        # Parse as lines (robust even if model adds bullets)
-        lines = [re.sub(r"^[•\-\d\)\.]+\s*", "", ln).strip() for ln in text.splitlines() if ln.strip()]
-        return lines[:count] or None
-
+        m = re.search(r"\[.*\]", raw, re.S)
+        if m:
+            arr = json.loads(m.group(0))
+            cand = [str(x).strip() for x in arr if str(x).strip()]
+        else:
+            cand = []
     except Exception:
-        logger.exception("OpenAI name generation failed")
-        return None
+        cand = []
 
-def local_generate(keywords: str, industry: str, style: str, count: int = 6):
-    # (your existing local fallback)
-    base = ["Sip & Savor", "Vin & Bread", "Café Vignette", "Artisan Blend", "The Luxe Bite", "Crust & Cork"]
-    return base[:count]
+    if not cand:
+        # Fallback: split lines & strip bullets/numbers
+        cand = []
+        for line in raw.splitlines():
+            line = line.strip()
+            line = re.sub(r"^[\s\-•\u2022]*\d{0,3}[.)\-\s]*", "", line)  # remove leading "1. ", "- ", etc.
+            if line:
+                cand.append(line)
+
+    # Deduplicate, keep order, cap count
+    seen, out = set(), []
+    for n in cand:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+            if len(out) >= count:
+                break
+    return out
+
+
+def openai_generate(prompt: str, count: int = 10) -> List[str]:
+    """
+    Generate business names. Uses Responses API if present; otherwise falls back
+    to Chat Completions. Returns a list (may be empty on error).
+    """
+    if not _client:
+        return []
+
+    try:
+        sys = (
+            "You are a creative brand naming assistant. "
+            f"Return exactly {count} strong, brandable business names. "
+            "Avoid long names, awkward puns, existing well-known brands, and domain hacks. "
+            "Prefer 1–3 words, easy to pronounce. Output a JSON array of strings only."
+        )
+
+        if hasattr(_client, "responses"):
+            # Newer SDKs
+            resp = _client.responses.create(
+                model="gpt-4o-mini",
+                input=[
+                    {"role": "system", "content": sys},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            # Most SDKs expose a convenience accessor:
+            text = getattr(resp, "output_text", None)
+            if not text:
+                # Robust extraction if output_text isn't present
+                # (pick the first text item we can find)
+                text = ""
+                if getattr(resp, "output", None):
+                    parts = getattr(resp, "output", [])
+                    for p in parts:
+                        if getattr(p, "content", None):
+                            for c in p.content:
+                                if getattr(c, "text", None):
+                                    text = c.text
+                                    break
+                            if text:
+                                break
+        else:
+            # Older SDKs – Chat Completions
+            resp = _client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": sys},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.9,
+                max_tokens=400,
+            )
+            text = resp.choices[0].message.content
+
+        return _postprocess(text or "", count)
+
+    except Exception as e:
+        print("OpenAI name generation error:", repr(e))
+        return []
+
+
+def local_generate(prompt: str, count: int = 10) -> List[str]:
+    """Very simple local fallback so the UI still works offline."""
+    seed = re.sub(r"[^a-zA-Z0-9 ]+", " ", prompt).strip() or "Nova"
+    bases = [w.title() for w in seed.split() if w][:3] or ["Nova"]
+    suffixes = ["Lab", "Works", "Foundry", "Forge", "Hub", "Studio", "Peak", "Nest", "Shift", "Spark"]
+    out = []
+    i = 0
+    while len(out) < count:
+        out.append(f"{bases[i % len(bases)]} {suffixes[i % len(suffixes)]}".strip())
+        i += 1
+    return out
