@@ -2,8 +2,9 @@
 Django settings for myproject.
 
 Works locally and on AWS Elastic Beanstalk.
-- DEBUG controlled by env
-- ALLOWED_HOSTS & CSRF_TRUSTED_ORIGINS derived from env (with safe defaults)
+
+- DEBUG controlled by env (default False)
+- ALLOWED_HOSTS & CSRF_TRUSTED_ORIGINS from env, with safe defaults
 - WhiteNoise serves static files (you can move to S3/CloudFront later)
 """
 
@@ -18,31 +19,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -----------------------------------------------------------------------------
 # Security
 # -----------------------------------------------------------------------------
-# Keep this secret in production (set via: eb setenv DJANGO_SECRET_KEY=...).
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-change-me-for-local-only",
-)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-me-for-local-only")
 
 # DEBUG: False by default. Set DEBUG=true in env for local dev on EB if needed.
-DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
-# ALLOWED_HOSTS:
-# - If ALLOWED_HOSTS env is set, it wins (comma-separated).
-# - Otherwise allow localhost, EB *.elasticbeanstalk.com, and your domains.
+# ---- Hosts -------------------------------------------------------------------
+# If ALLOWED_HOSTS env is set, it wins (comma-separated).
+# Otherwise allow localhost plus your EB CNAME (add your custom domain later).
 _env_hosts = os.getenv("ALLOWED_HOSTS", "")
 if _env_hosts.strip():
     ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
 else:
     ALLOWED_HOSTS = [
-        "localhost", "127.0.0.1",
-        ".elasticbeanstalk.com",  # EB environment CNAME
-        "influzer.ai", "www.influzer.ai",  # <-- replace with yours
+        "localhost",
+        "127.0.0.1",
+        # <-- your running EB hostname; keep this or set via env
+        "thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
     ]
 
-# CSRF_TRUSTED_ORIGINS:
-# If CSRF_TRUSTED_ORIGINS env set, we use it. Otherwise, we generate https://
-# entries for the non-localhost hosts above.
+# CSRF: trust the public origins (scheme + host). If env set, it wins.
 _env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _env_csrf.strip():
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()]
@@ -50,21 +46,21 @@ else:
     CSRF_TRUSTED_ORIGINS = [
         f"https://{h.lstrip('.')}"
         for h in ALLOWED_HOSTS
-        if h not in ("localhost", "127.0.0.1") and not h.endswith(".elasticbeanstalk.com")
+        if h not in ("localhost", "127.0.0.1")
     ]
 
-# When behind an AWS ALB/ELB, this makes request.is_secure() honor X-Forwarded-Proto
+# Honor X-Forwarded-Proto from the ALB/ELB so request.is_secure() works
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Security flags (applied when not DEBUG)
+# Sensible defaults when DEBUG is off
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # Reasonable HSTS starter; increase max_age after you verify HTTPS everywhere.
-    SECURE_HSTS_SECONDS = 60 * 60 * 24
+    SECURE_HSTS_SECONDS = 60 * 60 * 24  # bump after you confirm HTTPS everywhere
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # -----------------------------------------------------------------------------
 # OpenAI API (used by your generators)
@@ -95,9 +91,8 @@ INSTALLED_APPS = [
 # -----------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    # Serve static files efficiently in both local & EB
+    # WhiteNoise: serve static files on EB & locally
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -114,7 +109,7 @@ ROOT_URLCONF = "myproject.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # global templates directory
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -160,11 +155,19 @@ USE_TZ = True
 # -----------------------------------------------------------------------------
 # Static & Media
 # -----------------------------------------------------------------------------
-# WhiteNoise will serve files in STATIC_ROOT
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]  # optional, for local dev assets
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # optional (for site.css etc.)
+
+# Django 5 storage config (STATICFILES_STORAGE is removed)
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
