@@ -63,7 +63,8 @@ def openai_generate(prompt: str, count: int = 10) -> List[str]:
         if hasattr(_client, "responses"):
             # Newer SDKs
             resp = _client.responses.create(
-                model="gpt-4o-mini",
+                #model="gpt-4o-mini",
+                model="gpt-5-nano",
                 input=[
                     {"role": "system", "content": sys},
                     {"role": "user", "content": prompt},
@@ -88,12 +89,13 @@ def openai_generate(prompt: str, count: int = 10) -> List[str]:
         else:
             # Older SDKs – Chat Completions
             resp = _client.chat.completions.create(
-                model="gpt-4o-mini",
+                #model="gpt-4o-mini",
+                model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": sys},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.9,
+                temperature=0.8,
                 max_tokens=400,
             )
             text = resp.choices[0].message.content
