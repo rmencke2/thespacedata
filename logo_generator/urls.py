@@ -1,3 +1,11 @@
 from django.urls import path
 from . import views
-urlpatterns = [ path("", views.index, name="logo_index"), ]
+
+app_name = "logo_generator"
+
+urlpatterns = [
+    path("", views.index, name="index"),
+    path("new/", views.new, name="new"),
+    path("create/", views.create, name="create"),
+    path("<int:pk>/", views.show, name="show"),
+]

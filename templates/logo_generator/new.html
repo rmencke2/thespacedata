@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Logo Generator · thespacedata{% endblock %}
+
+{% block page_heading %}
+  <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Logo Generator</h1>
+{% endblock %}
+
+{% block content %}
+  {# Flash messages #}
+  {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for message in messages %}
+        <div class="rounded-md border px-4 py-3
+                    {% if message.tags == 'error' %}
+                      border-red-300 bg-red-50 text-red-800
+                    {% elif message.tags == 'success' %}
+                      border-green-300 bg-green-50 text-green-800
+                    {% else %}
+                      border-slate-300 bg-slate-50 text-slate-800
+                    {% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if form.non_field_errors %}
+    <div class="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'logo_generator:create' %}" class="mt-6">
+    {% csrf_token %}
+
+    <!-- Minimal section -->
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">
+          {{ form.brand_name.label }}
+        </label>
+        {{ form.brand_name }}
+        {% if form.brand_name.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.brand_name.errors|striptags }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700">
+          {{ form.tagline.label }}
+        </label>
+        {{ form.tagline }}
+        {% if form.tagline.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ form.tagline.errors|striptags }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Advanced toggle (starts hidden; JS auto-opens if needed) -->
+    <div class="mt-8">
+      <button
+        type="button"
+        id="advToggle"
+        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        aria-expanded="false"
+        aria-controls="advanced"
+      >
+        <svg class="h-4 w-4 transition-transform" id="advIcon" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd"
+                d="M5.23 7.21a.75.75 0 011.06.02L10 11.1l3.71-3.87a.75.75 0 111.08 1.04l-4.25 4.43a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                clip-rule="evenodd" />
+        </svg>
+        More options (optional)
+      </button>
+
+      <div id="advanced" class="mt-6 hidden">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              {{ form.industry.label }}
+            </label>
+            {{ form.industry }}
+            {% if form.industry.errors %}
+              <p class="mt-1 text-sm text-red-600" data-adv-error="1">{{ form.industry.errors|striptags }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              {{ form.style_keywords.label }}
+            </label>
+            {{ form.style_keywords }}
+            {% if form.style_keywords.errors %}
+              <p class="mt-1 text-sm text-red-600" data-adv-error="1">{{ form.style_keywords.errors|striptags }}</p>
+            {% endif %}
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              {{ form.values.label }}
+            </label>
+            {{ form.values }}
+            {% if form.values.errors %}
+              <p class="mt-1 text-sm text-red-600" data-adv-error="1">{{ form.values.errors|striptags }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              {{ form.colors.label }}
+            </label>
+            {{ form.colors }}
+            {% if form.colors.errors %}
+              <p class="mt-1 text-sm text-red-600" data-adv-error="1">{{ form.colors.errors|striptags }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              {{ form.icon_ideas.label }}
+            </label>
+            {{ form.icon_ideas }}
+            {% if form.icon_ideas.errors %}
+              <p class="mt-1 text-sm text-red-600" data-adv-error="1">{{ form.icon_ideas.errors|striptags }}</p>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10">
+      <button
+        type="submit"
+        class="rounded-xl bg-indigo-600 px-5 py-2.5 text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        Generate
+      </button>
+    </div>
+  </form>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+(function () {
+  const btn  = document.getElementById('advToggle');
+  const panel = document.getElementById('advanced');
+  const icon  = document.getElementById('advIcon');
+
+  function setOpen(open) {
+    panel.classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', String(open));
+    icon.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+  }
+
+  // Toggle on click
+  btn.addEventListener('click', () => {
+    const isHidden = panel.classList.contains('hidden');
+    setOpen(isHidden);
+  });
+
+  // Auto-open if any advanced field has a value or error
+  const ids = ['id_industry','id_style_keywords','id_values','id_colors','id_icon_ideas'];
+  const hasValue = ids.some(id => {
+    const el = document.getElementById(id);
+    return el && String(el.value || '').trim() !== '';
+  });
+  const hasError = !!document.querySelector('[data-adv-error="1"]');
+  if (hasValue || hasError) setOpen(true);
+})();
+</script>
+{% endblock %}

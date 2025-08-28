@@ -1,25 +1,102 @@
 {% load static %}
-<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}thespacedata{% endblock %}</title>
-<link rel="stylesheet" href="{% static 'css/app.css' %}">
-<style>
- body{font-family:-apple-system,Inter,Arial,sans-serif;margin:0}
- header,footer{padding:14px 18px;background:#0b3d91;color:#fff}
- main{padding:28px 20px} a{color:#0b3d91;text-decoration:none}
- nav a{margin-right:14px;color:#fff}
-</style>
-</head><body>
-<header>
-  <strong>thespacedata</strong>
-  <nav style="float:right">
-    <a href="/">Home</a>
-    <a href="/color/">Color Picker</a>
-    <a href="/logo/">Logo Generator</a>
-    <a href="/names/">Name Generator</a>
-    <a href="/users/">Users</a>
-  </nav><div style="clear:both"></div>
-</header>
-<main>{% block content %}{% endblock %}</main>
-<footer>&copy; {{ now|default:"" }} thespacedata</footer>
-</body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <!-- Default title, can be overridden in child templates -->
+    <title>{% block title %}thespacedata{% endblock %}</title>
+
+    <!-- Tailwind (CDN for development). 
+         For production, you’ll likely want to compile Tailwind locally. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Your custom CSS (site-wide tweaks, overrides, and fallbacks) -->
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+
+    <!-- Page-specific <head> content (e.g., custom CSS, meta tags) -->
+    {% block head_extra %}{% endblock %}
+  </head>
+
+  <body class="min-h-screen flex flex-col bg-white text-slate-900">
+
+    <!-- =========================
+         Header / Navigation
+    ========================== -->
+    <header class="bg-indigo-900 text-white">
+      <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+        <!-- Logo / Home link -->
+        <a href="{% url 'home' %}" class="font-semibold text-lg">thespacedata</a>
+
+        <!-- Navigation links -->
+        <nav class="flex items-center gap-6 text-sm">
+          <a href="{% url 'home' %}" class="hover:underline">Home</a>
+
+          {% url 'color_picker:index' as color_url %}
+          {% if color_url %}
+            <a href="{{ color_url }}" class="hover:underline">Color Picker</a>
+          {% endif %}
+
+          {% url 'name_generator:generate' as names_url %}
+          {% if names_url %}
+            <a href="{{ names_url }}" class="hover:underline">Name Generator</a>
+          {% endif %}
+
+          {% url 'logo_generator:index' as logo_url %}
+          {% if logo_url %}
+            <a href="{{ logo_url }}" class="hover:underline">Logo Generator</a>
+          {% endif %}
+
+          {% url 'users:index' as users_url %}
+          {% if users_url %}
+            <a href="{{ users_url }}" class="hover:underline">Users</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <!-- =========================
+         Main content
+    ========================== -->
+    <main class="flex-1 mx-auto max-w-6xl px-4 py-10">
+
+      <!-- Django messages (alerts for success/error/warning/info) -->
+      {% if messages %}
+        <div class="mb-6 space-y-3">
+          {% for message in messages %}
+            <div class="rounded-lg px-4 py-3 border
+                        {% if message.tags == 'error' %} bg-red-50 text-red-700 border-red-200
+                        {% elif message.tags == 'warning' %} bg-amber-50 text-amber-800 border-amber-200
+                        {% elif message.tags == 'success' %} bg-emerald-50 text-emerald-800 border-emerald-200
+                        {% else %} bg-slate-50 text-slate-800 border-slate-200 {% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Page-specific heading block -->
+      {% block page_heading %}{% endblock %}
+
+      <!-- Main content block (child templates inject here) -->
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- =========================
+         Footer
+    ========================== -->
+    <footer class="bg-indigo-900 text-white">
+      <div class="mx-auto max-w-6xl px-4 py-4 text-sm">
+        © thespacedata
+        <!-- Extra footer content (optional, per-page) -->
+        {% block footer_extra %}{% endblock %}
+      </div>
+    </footer>
+
+    <!-- =========================
+         Scripts (per-page or global)
+    ========================== -->
+    {% block body_scripts %}{% endblock %}
+  </body>
+</html>

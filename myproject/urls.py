@@ -26,11 +26,11 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
     path("admin/", admin.site.urls),
-    path("color/", include("color_picker.urls")),
-    path("logo/", include("logo_generator.urls")),
+    path("color/", include("color_picker.urls")),    
     path("names/", include("name_generator.urls", namespace="name_generator")),
-    path("users/", include("users.urls")),
-    path("color/", include("color_picker.urls")),
+     # add these two lines:
+    path("users/", include(("users.urls", "users"), namespace="users")),
+    path("logo/", include(("logo_generator.urls", "logo_generator"), namespace="logo_generator")),
     ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

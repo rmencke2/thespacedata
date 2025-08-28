@@ -1,0 +1,7 @@
+/* Simple fallback so pages don’t look “broken” if Tailwind CDN doesn’t load */
+html { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+header, footer { background: #163B7A; color: #fff; }
+main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1rem; }
+header .max-w-6xl, footer .max-w-6xl { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+a { color: inherit; text-decoration: none; }
+nav a { margin-left: 1rem; }

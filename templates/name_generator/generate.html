@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% load form_extras %}
 {% block title %}Business Name Generator{% endblock %}
 {% block content %}
+{% load form_extras %}
 <style>
   /* ---- Page shell ---- */
   .ng-container { max-width: 1100px; margin: 0 auto; padding: 24px; }
@@ -59,36 +59,53 @@
   <!-- Generator form -->
   <div class="ng-card">
     <form method="post" novalidate>
-      {% csrf_token %}
-      <div class="ng-grid">
+        {% csrf_token %}
+      
+        <!-- DESCRIPTION (primary input) -->
         <div class="ng-field" style="grid-column: 1 / -1;">
-          <label class="ng-label" for="{{ form.keywords.id_for_label }}">Keywords</label>
-          {{ form.keywords|add_class:"ng-input" }}
-          <div class="ng-hint">{{ form.keywords.help_text }}</div>
+          <label class="ng-label" for="description">Describe what you want</label>
+          <textarea id="description" name="description" rows="4"
+                    class="ng-input" placeholder="e.g., A fun, modern name for a vegan shoe brand that feels Italian but global.">{{ description|default_if_none:'' }}</textarea>
+          <div class="ng-hint">Write naturally. We'll turn this into a great prompt.</div>
         </div>
-
-        <div class="ng-field">
-          <label class="ng-label" for="{{ form.industry.id_for_label }}">Industry</label>
-          {{ form.industry|add_class:"ng-input" }}
-        </div>
-
-        <div class="ng-field">
-          <label class="ng-label" for="{{ form.style.id_for_label }}">Style</label>
-          {{ form.style|add_class:"ng-input" }}
-        </div>
-
-        <div class="ng-field">
-          <label class="ng-label" for="{{ form.count.id_for_label }}">How many?</label>
-          {{ form.count|add_class:"ng-input" }}
-        </div>
-
-        <div class="ng-field" style="grid-column: 1 / -1;">
+      
+        <!-- COLLAPSIBLE: ADVANCED OPTIONS -->
+        <details class="ng-card" style="margin-top:16px;" {% if keywords or industry or style or count %}open{% endif %}>
+          <summary class="ng-label" style="cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px;">
+            <span>More options (keywords, industry, style, count)</span>
+          </summary>
+      
+          <div class="ng-grid" style="margin-top:14px;">
+            <div class="ng-field">
+              <label class="ng-label" for="{{ form.keywords.id_for_label }}">Keywords</label>
+              {{ form.keywords|add_class:"ng-input" }}
+              <div class="ng-hint">Comma separated (e.g., cozy, urban, artisan)</div>
+            </div>
+      
+            <div class="ng-field">
+              <label class="ng-label" for="{{ form.industry.id_for_label }}">Industry</label>
+              {{ form.industry|add_class:"ng-input" }}
+            </div>
+      
+            <div class="ng-field">
+              <label class="ng-label" for="{{ form.style.id_for_label }}">Style</label>
+              {{ form.style|add_class:"ng-input" }}
+              <div class="ng-hint">Examples: playful, premium, minimal, tech-forward</div>
+            </div>
+      
+            <div class="ng-field">
+              <label class="ng-label" for="{{ form.count.id_for_label }}">How many?</label>
+              {{ form.count|add_class:"ng-input" }}
+            </div>
+          </div>
+        </details>
+      
+        <div class="ng-field" style="grid-column: 1 / -1; margin-top:16px;">
           <div class="ng-actions">
             <button class="ng-button" type="submit">Generate</button>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
   </div>
 
   <!-- Suggestions -->

@@ -1,6 +1,11 @@
+# users/views.py
+from django.http import HttpResponse
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 
-@login_required
+def index(request):
+    # Replace with a real template when you have one
+    return HttpResponse("Users index")
+
 def profile(request):
-    return render(request, "users/profile.html")
+    # Replace with a real template when you have one
+    return HttpResponse("User profile page")
