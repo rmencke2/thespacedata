@@ -1,0 +1,62 @@
+name: Deploy to AWS App Runner
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_REPO_NAME: thespacedata
+  SERVICE_NAME: thespacedata-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_REGISTRY=$ACCOUNT_ID.dkr.ecr.${AWS_REGION}.amazonaws.com
+          IMAGE_TAG=${GITHUB_SHA}
+          # create repo if it doesn't exist
+          aws ecr describe-repositories --repository-names ${IMAGE_REPO_NAME} >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name ${IMAGE_REPO_NAME}
+          docker build -t ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${IMAGE_TAG} .
+          docker push ${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+          echo "IMAGE_URI=${ECR_REGISTRY}/${IMAGE_REPO_NAME}:${IMAGE_TAG}" >> $GITHUB_ENV
+
+      - name: Create or update App Runner service
+        run: |
+          set -euo pipefail
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+          if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
+            echo "Creating App Runner service ${SERVICE_NAME}..."
+            aws apprunner create-service \
+              --service-name "${SERVICE_NAME}" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AutoDeploymentsEnabled=true" \
+              --instance-configuration "Cpu=1 vCPU,Memory=2 GB" \
+              --health-check-configuration "Protocol=HTTP,Path=/health,Interval=10,Timeout=5,HealthyThreshold=1,UnhealthyThreshold=5"
+          else
+            echo "Updating App Runner service ${SERVICE_NAME}..."
+            aws apprunner update-service \
+              --service-arn "${SERVICE_ARN}" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AutoDeploymentsEnabled=true"
+          fi
