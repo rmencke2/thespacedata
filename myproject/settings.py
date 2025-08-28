@@ -22,7 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-me-for-local-only")
 
 # DEBUG: False by default. Set DEBUG=true in env for local dev on EB if needed.
-DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
+# --- Host & security settings -----------------------------------------------
+DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
 
 # ---- Hosts -------------------------------------------------------------------
 # If ALLOWED_HOSTS env is set, it wins (comma-separated).
@@ -31,37 +32,39 @@ _env_hosts = os.getenv("ALLOWED_HOSTS", "")
 if _env_hosts.strip():
     ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
 else:
-    ALLOWED_HOSTS = [
-        "localhost",
-        "127.0.0.1",
-        # <-- your running EB hostname; keep this or set via env
-        "thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
-    ]
+     ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com"]
+
 
 # CSRF: trust the public origins (scheme + host). If env set, it wins.
+# Trust these origins for CSRF. (Include EB and your custom domains.)
 _env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _env_csrf.strip():
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()]
 else:
     CSRF_TRUSTED_ORIGINS = [
-        f"https://{h.lstrip('.')}"
-        for h in ALLOWED_HOSTS
-        if h not in ("localhost", "127.0.0.1")
+        # Add your domains here as needed:
+        "https://thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
+        # "https://yourdomain.com", "https://www.yourdomain.com",
     ]
 
-# Honor X-Forwarded-Proto from the ALB/ELB so request.is_secure() works
+# Trust ALB/X-Forwarded-Proto
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Sensible defaults when DEBUG is off
-if not DEBUG:
+# Single switch to control HTTPS behavior (redirect + secure cookies + HSTS)
+ENABLE_SSL = os.getenv("SECURE_SSL_REDIRECT", "false").lower() in ("1", "true", "yes")
+
+if ENABLE_SSL:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 60 * 60 * 24  # bump after you confirm HTTPS everywhere
+    SECURE_HSTS_SECONDS = 60 * 60 * 24
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
-    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-
+else:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
 # -----------------------------------------------------------------------------
 # OpenAI API (used by your generators)
 # -----------------------------------------------------------------------------
