@@ -59,3 +59,38 @@ jobs:
               --service-arn "${SERVICE_ARN}" \
               --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8000,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AutoDeploymentsEnabled=true"
           fi
+
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # Make a clean ZIP of the repo for EB
+      - name: Build bundle
+        run: |
+          zip -r app.zip . -x "**/.git/**" "**/.github/**" "**/__pycache__/**"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          application_name: thespacedata           # EB Application
+          environment_name: thespacedata-env       # EB Environment
+          version_label: ${{ github.sha }}         # unique per push
+          region: us-east-1
+          deployment_package: app.zip
