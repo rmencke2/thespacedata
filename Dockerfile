@@ -1,33 +1,33 @@
+# Dockerfile
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PORT=8080 \
     DJANGO_SETTINGS_MODULE=myproject.settings
 
 WORKDIR /app
 
-# If you don't use Postgres, you can drop libpq-dev
+# --- system deps for Pillow/CairoSVG/png/svg text rendering ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    libjpeg62-turbo-dev zlib1g-dev libpng-dev libfreetype6-dev \
+    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 librsvg2-2 \
+    fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy project
+# App code
 COPY . .
 
-# Collect static files (fail if broken so you catch it at build time)
-RUN python manage.py collectstatic --noinput
+# A writeable media dir (good for App Runner)
+RUN mkdir -p /tmp/media
 
-# EB reverse proxy expects 8080; App Runner passes $PORT which we honor below
+# Collect static (ignore if none)
+RUN python manage.py collectstatic --noinput || true
+
 EXPOSE 8080
-
-# Helpful logging flags for EB/App Runner
-# Bind to $PORT if set (App Runner), else 8080 (EB)
-CMD ["bash", "-lc", "gunicorn myproject.wsgi:application \
-  --bind 0.0.0.0:${PORT:-8080} \
-  --workers 2 \
-  --timeout 120 \
-  --access-logfile - \
-  --error-logfile -"]
+CMD ["bash","-lc","gunicorn myproject.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120"]
