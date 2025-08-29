@@ -65,6 +65,8 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
     SECURE_HSTS_SECONDS = 0
+
+SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 # -----------------------------------------------------------------------------
 # OpenAI API (used by your generators)
 # -----------------------------------------------------------------------------

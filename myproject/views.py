@@ -6,5 +6,5 @@ def home(request):
     return render(request, "home.html")
 
 def health(request):
+    return JsonResponse({"status": "ok"})
     return HttpResponse("ok")
-
