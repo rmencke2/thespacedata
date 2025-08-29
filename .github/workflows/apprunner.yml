@@ -57,6 +57,6 @@ jobs:
           else
             echo "Updating App Runner service ${SERVICE_NAME}..."
             aws apprunner update-service \
-  --service-arn "$SERVICE_ARN" \
-  --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080}},AutoDeploymentsEnabled=true"
+              --service-arn "$SERVICE_ARN" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080}},AutoDeploymentsEnabled=true"
           fi
