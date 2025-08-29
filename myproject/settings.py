@@ -47,26 +47,29 @@ else:
         # "https://yourdomain.com", "https://www.yourdomain.com",
     ]
 
-# Trust ALB/X-Forwarded-Proto
+# Behind ALB/App Runner so Django knows original scheme
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Single switch to control HTTPS behavior (redirect + secure cookies + HSTS)
-ENABLE_SSL = os.getenv("SECURE_SSL_REDIRECT", "false").lower() in ("1", "true", "yes")
+# One boolean to control HTTPS behavior (default ON in prod)
+SECURE_SSL_REDIRECT = (
+    os.getenv("SECURE_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
+    and not DEBUG
+)
 
-if ENABLE_SSL:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 60 * 60 * 24
+# App Runner health check must stay HTTP
+SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
+
+# Cookies track the same setting
+SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
+CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+
+# HSTS only when we’re actually forcing HTTPS
+if SECURE_SSL_REDIRECT:
+    SECURE_HSTS_SECONDS = 60 * 60 * 24  # 1 day starter; raise later
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
 else:
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
     SECURE_HSTS_SECONDS = 0
-
-SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 # -----------------------------------------------------------------------------
 # OpenAI API (used by your generators)
 # -----------------------------------------------------------------------------
