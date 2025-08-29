@@ -16,6 +16,7 @@ import os
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 # -----------------------------------------------------------------------------
 # Security
 # -----------------------------------------------------------------------------
@@ -178,8 +179,7 @@ STORAGES = {
 }
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
+MEDIA_ROOT = BASE_DIR / "media" 
 # -----------------------------------------------------------------------------
 # Default PK
 # -----------------------------------------------------------------------------
@@ -191,6 +191,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
     "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django.request": {  # ensures 500s are logged
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
 }

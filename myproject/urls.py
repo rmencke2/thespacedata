@@ -32,5 +32,4 @@ urlpatterns = [
     path("users/", include(("users.urls", "users"), namespace="users")),
     path("logo/", include(("logo_generator.urls", "logo_generator"), namespace="logo_generator")),
     ]
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
