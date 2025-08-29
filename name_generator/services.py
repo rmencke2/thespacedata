@@ -1,120 +1,209 @@
 # name_generator/services.py
-import json, re
-from typing import List
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from typing import List, Optional
+
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
+
+# ---- Configuration from settings -------------------------------------------
+
+OPENAI_API_KEY: str = getattr(settings, "OPENAI_API_KEY", "").strip()
+OPENAI_BASE: str = getattr(settings, "OPENAI_BASE", "").strip()  # optional: Azure/OpenRouter, etc.
+OPENAI_MODEL: str = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini").strip()  # pick your default
+
+
+# ---- OpenAI client bootstrap ------------------------------------------------
+
 try:
-    from openai import OpenAI
-except Exception:  # older SDKs
+    from openai import OpenAI  # official Python SDK (>=1.0)
+except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
 
-_client = OpenAI(api_key=settings.OPENAI_API_KEY) if (OpenAI and settings.OPENAI_API_KEY) else None
+
+def _build_client():
+    """
+    Return an OpenAI client instance or raise a RuntimeError with a helpful message.
+    We keep this in a function so failures don’t crash module import.
+    """
+    if OpenAI is None:
+        raise RuntimeError(
+            "OpenAI SDK is not installed. Add `openai` to your requirements.txt."
+        )
+    if not OPENAI_API_KEY:
+        raise RuntimeError(
+            "OPENAI_API_KEY is missing. Add it as an App Runner env var and rebuild."
+        )
+
+    kwargs = {"api_key": OPENAI_API_KEY}
+    if OPENAI_BASE:
+        kwargs["base_url"] = OPENAI_BASE
+
+    return OpenAI(**kwargs)
+
+
+# Create a module-level client but don’t explode on import.
+# If it fails, we log and retry inside the request path.
+_client = None
+try:
+    _client = _build_client()
+except Exception as e:  # pragma: no cover
+    logger.error("OpenAI client init failed: %s", e)
+
+
+# ---- Helpers ----------------------------------------------------------------
+
+_JSON_ARRAY_RE = re.compile(r"\[[\s\S]*\]")  # tolerant JSON array capture
 
 
 def _postprocess(raw: str, count: int) -> List[str]:
-    """Extract a clean list of names from either JSON or plain text."""
-    # Try JSON array first (allow extra text around it)
-    try:
-        m = re.search(r"\[.*\]", raw, re.S)
-        if m:
+    """
+    Extract a clean list of names from either JSON or free-form text.
+
+    Strategy:
+      1) Prefer a JSON array anywhere in the text
+      2) Otherwise parse bullet/numbered/comma-separated lines
+      3) De-dupe, trim, filter empties, limit to `count`
+    """
+    raw = (raw or "").strip()
+
+    # Try to find a JSON array within the text
+    m = _JSON_ARRAY_RE.search(raw)
+    if m:
+        try:
             arr = json.loads(m.group(0))
-            cand = [str(x).strip() for x in arr if str(x).strip()]
-        else:
-            cand = []
-    except Exception:
-        cand = []
+            if isinstance(arr, list):
+                items = [str(x).strip() for x in arr]
+                items = [x for x in items if x]
+                # de-dupe preserving order
+                seen = set()
+                uniq = []
+                for x in items:
+                    if x.lower() not in seen:
+                        uniq.append(x)
+                        seen.add(x.lower())
+                return uniq[:count]
+        except Exception:
+            pass  # fall back to text parsing
 
-    if not cand:
-        # Fallback: split lines & strip bullets/numbers
-        cand = []
-        for line in raw.splitlines():
-            line = line.strip()
-            line = re.sub(r"^[\s\-•\u2022]*\d{0,3}[.)\-\s]*", "", line)  # remove leading "1. ", "- ", etc.
-            if line:
-                cand.append(line)
+    # Fallback: split by lines or commas, strip list markers
+    candidates: List[str] = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # remove bullets / numbers like "1. " "- " "* "
+        line = re.sub(r"^\s*[-*•]\s*", "", line)
+        line = re.sub(r"^\s*\d+\.\s*", "", line)
+        # Sometimes lines are comma-separated phrases
+        parts = [p.strip() for p in re.split(r",\s*", line) if p.strip()]
+        candidates.extend(parts)
 
-    # Deduplicate, keep order, cap count
-    seen, out = set(), []
-    for n in cand:
-        if n not in seen:
-            seen.add(n)
-            out.append(n)
-            if len(out) >= count:
-                break
-    return out
+    # If still nothing, try one big comma split
+    if not candidates and "," in raw:
+        candidates = [p.strip() for p in raw.split(",") if p.strip()]
+
+    # De-dupe + trim
+    seen2 = set()
+    out: List[str] = []
+    for x in candidates:
+        if not x:
+            continue
+        key = x.lower()
+        if key not in seen2:
+            out.append(x)
+            seen2.add(key)
+
+    return out[:count]
 
 
-def openai_generate(prompt: str, count: int = 10) -> List[str]:
+def _compose_prompt(topic: str, count: int, style: Optional[str], language: str) -> str:
+    style_part = f" in the style '{style}'" if style else ""
+    return (
+        f"Generate {count} distinct brand/startup names for: {topic}."
+        f"{style_part} Reply primarily with a JSON array of strings."
+        f" If you include any extra commentary, keep it brief."
+        f" Language: {language}."
+    )
+
+
+# ---- Public API --------------------------------------------------------------
+
+class NameGenError(RuntimeError):
+    """Raised for user-visible name generation errors."""
+
+
+def generate_names(
+    topic: str,
+    count: int = 10,
+    *,
+    style: Optional[str] = None,
+    language: str = "English",
+    temperature: float = 0.8,
+) -> List[str]:
     """
-    Generate business names. Uses Responses API if present; otherwise falls back
-    to Chat Completions. Returns a list (may be empty on error).
+    Generate `count` brand names from a topic.
+    Raises NameGenError with a helpful message if LLM is unavailable.
     """
-    if not _client:
-        return []
+    global _client
+    if not topic or not topic.strip():
+        raise NameGenError("Please provide a non-empty topic.")
 
+    # Ensure client is ready (support late binding if env changes)
+    if _client is None:
+        try:
+            _client = _build_client()
+        except Exception as e:
+            logger.error("OpenAI client unavailable: %s", e)
+            raise NameGenError(
+                "Name generator is temporarily unavailable (LLM credentials/config missing)."
+            ) from e
+
+    user_prompt = _compose_prompt(topic.strip(), count, style, language)
+
+    # Prefer chat.completions (modern SDK)
     try:
-        sys = (
-            "You are a creative brand naming assistant. "
-            f"Return exactly {count} strong, brandable business names. "
-            "Avoid long names, awkward puns, existing well-known brands, and domain hacks. "
-            "Prefer 1–3 words, easy to pronounce. Output a JSON array of strings only."
+        resp = _client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a creative but concise brand naming assistant. "
+                        "Return short, punchy names. Prefer JSON array output."
+                    ),
+                },
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=temperature,
         )
-
-        if hasattr(_client, "responses"):
-            # Newer SDKs
-            resp = _client.responses.create(
-                #model="gpt-4o-mini",
-                model="gpt-5-nano",
-                input=[
-                    {"role": "system", "content": sys},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            # Most SDKs expose a convenience accessor:
-            text = getattr(resp, "output_text", None)
-            if not text:
-                # Robust extraction if output_text isn't present
-                # (pick the first text item we can find)
-                text = ""
-                if getattr(resp, "output", None):
-                    parts = getattr(resp, "output", [])
-                    for p in parts:
-                        if getattr(p, "content", None):
-                            for c in p.content:
-                                if getattr(c, "text", None):
-                                    text = c.text
-                                    break
-                            if text:
-                                break
-        else:
-            # Older SDKs – Chat Completions
-            resp = _client.chat.completions.create(
-                #model="gpt-4o-mini",
-                model="gpt-5-nano",
+        raw = resp.choices[0].message.content or ""
+        names = _postprocess(raw, count)
+        if not names:
+            # Give one more try with a different instruction style
+            resp2 = _client.chat.completions.create(
+                model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": sys},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": "Return ONLY a JSON array of strings."},
+                    {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.8,
-                max_tokens=400,
+                temperature=temperature,
             )
-            text = resp.choices[0].message.content
+            raw2 = resp2.choices[0].message.content or ""
+            names = _postprocess(raw2, count)
 
-        return _postprocess(text or "", count)
+        if not names:
+            raise NameGenError("The model returned no usable names. Try again.")
 
+        return names
+
+    except NameGenError:
+        raise
     except Exception as e:
-        print("OpenAI name generation error:", repr(e))
-        return []
-
-
-def local_generate(prompt: str, count: int = 10) -> List[str]:
-    """Very simple local fallback so the UI still works offline."""
-    seed = re.sub(r"[^a-zA-Z0-9 ]+", " ", prompt).strip() or "Nova"
-    bases = [w.title() for w in seed.split() if w][:3] or ["Nova"]
-    suffixes = ["Lab", "Works", "Foundry", "Forge", "Hub", "Studio", "Peak", "Nest", "Shift", "Spark"]
-    out = []
-    i = 0
-    while len(out) < count:
-        out.append(f"{bases[i % len(bases)]} {suffixes[i % len(suffixes)]}".strip())
-        i += 1
-    return out
+        logger.exception("OpenAI call failed")
+        raise NameGenError("Name generator failed while calling the LLM.") from e
