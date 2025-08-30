@@ -1,44 +1,34 @@
-# Dockerfile
-FROM python:3.12-slim
+# ---------- build/run stage ----------
+    FROM python:3.12-slim AS app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=8080 \
-    DJANGO_SETTINGS_MODULE=myproject.settings
-
-WORKDIR /app
-
-# --- system deps for Pillow/CairoSVG/png/svg text rendering ---
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    libjpeg62-turbo-dev zlib1g-dev libpng-dev libfreetype6-dev \
-    libcairo2 libpango-1.0-0 libpangocairo-1.0-0 librsvg2-2 \
-    fonts-dejavu-core \
- && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
-RUN pip install --no-cache-dir whitenoise
-
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-CMD ["/entrypoint.sh"]
-#CMD ["/bin/sh", "-lc", "/entrypoint.sh"]
-
-# App code
-COPY . .
-
-# A writeable media dir (good for App Runner)
-RUN mkdir -p /tmp/media
-
-# Collect static (ignore if none)
-RUN python manage.py collectstatic --noinput || true
-
-EXPOSE 8080
-
-CMD ["sh", "-c", "\
-  python manage.py migrate --noinput && \
-  python manage.py collectstatic --noinput && \
-  gunicorn myproject.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 120 \
-"]
+    ENV PYTHONDONTWRITEBYTECODE=1 \
+        PYTHONUNBUFFERED=1 \
+        PIP_NO_CACHE_DIR=1 \
+        DJANGO_SETTINGS_MODULE=myproject.settings
+    
+    WORKDIR /app
+    
+    # System deps you might need for pip wheels (adjust as your deps require)
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+      && rm -rf /var/lib/apt/lists/*
+    
+    # Copy only requirements first for better layer caching
+    COPY requirements.txt /app/requirements.txt
+    RUN pip install -r requirements.txt
+    
+    # Make sure gunicorn & whitenoise are installed (add if not in requirements.txt)
+    RUN pip install gunicorn whitenoise
+    
+    # Copy project
+    COPY . /app
+    
+    # Copy the root entrypoint (NOT docker/entrypoint.sh)
+    COPY entrypoint.sh /entrypoint.sh
+    RUN chmod +x /entrypoint.sh
+    
+    # Expose the port App Runner hits
+    EXPOSE 8080
+    
+    # One entrypoint only (no extra CMDs elsewhere)
+    ENTRYPOINT ["/entrypoint.sh"]
