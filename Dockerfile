@@ -30,4 +30,7 @@ RUN mkdir -p /tmp/media
 RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8080
-CMD ["bash","-lc","gunicorn myproject.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120"]
+
+CMD bash -lc "python manage.py collectstatic --noinput && \
+              python manage.py migrate --noinput && \
+              gunicorn myproject.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 120""
