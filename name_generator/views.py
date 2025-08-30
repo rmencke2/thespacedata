@@ -1,58 +1,65 @@
-# name_generator/views.py
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict
+
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_http_methods
-from .services import generate_names, ServiceError  # your services.py
+
+from .models import NameIdea
+from .services import generate_names, ServiceError  # keep import available
+
+log = logging.getLogger(__name__)
+
+
+def health(request: HttpRequest) -> HttpResponse:
+    """Simple health endpoint for liveness checks."""
+    return HttpResponse("ok")
+
 
 @require_http_methods(["GET", "POST"])
-def generate_view(request):
+def generate(request: HttpRequest) -> HttpResponse:
+    """
+    Render the name generator page.
+
+    GET: show the form.
+    POST: call the service to generate names and persist a NameIdea row.
+    Never raises—renders a friendly page even on failure.
+    """
     if request.method == "GET":
-        # show form
-        return render(request, "name_generator/form.html")
+        return render(request, "name_generator/generate.html", {"names": []})
 
-    # POST: generate names
-    seed = (request.POST.get("seed") or "").strip()
-    count_raw = request.POST.get("count") or "10"
+    # POST
+    industry = (request.POST.get("industry") or "").strip()
+    vibe = (request.POST.get("vibe") or "").strip()
+    keywords = (request.POST.get("keywords") or "").strip()
+    count_str = request.POST.get("count") or "10"
     try:
-        count = max(1, min(50, int(count_raw)))
+        count = max(1, min(50, int(count_str)))
     except ValueError:
-        return HttpResponseBadRequest("Invalid count")
-
-    if not seed:
-        return HttpResponseBadRequest("Missing 'seed'")
+        count = 10
 
     try:
-        names = generate_names(seed, count=count)
+        names = generate_names(industry=industry, vibe=vibe, count=count)
     except ServiceError as e:
-        # Show a friendly error page; also logged by your LOGGING config
-        return render(
-            request,
-            "name_generator/error.html",
-            {"message": str(e)},
-            status=502,
-        )
+        log.exception("ServiceError generating names: %s", e)
+        names = []
 
-    return render(
-        request,
-        "name_generator/result.html",
-        {"seed": seed, "count": count, "names": names},
+    # Persist the attempt (even if names is empty—useful for debugging)
+    NameIdea.objects.create(
+        user=getattr(request, "user", None) if getattr(request, "user", None).is_authenticated else None,
+        keywords=keywords,
+        industry=industry,
+        style=vibe,
+        result="\n".join(names),
     )
 
-# Optional JSON endpoint
-def api_generate(request):
-    seed = (request.GET.get("seed") or "").strip()
-    count_raw = request.GET.get("count") or "10"
-    try:
-        count = max(1, min(50, int(count_raw)))
-    except ValueError:
-        return JsonResponse({"error": "Invalid count"}, status=400)
-    if not seed:
-        return JsonResponse({"error": "Missing 'seed'"}, status=400)
-    try:
-        names = generate_names(seed, count=count)
-    except ServiceError as e:
-        return JsonResponse({"error": str(e)}, status=502)
-    return JsonResponse({"seed": seed, "count": count, "names": names})
-
-# Keep compatibility with urls that expect views.generate
-generate = generate_view
+    context: Dict[str, Any] = {
+        "names": names,
+        "industry": industry,
+        "vibe": vibe,
+        "keywords": keywords,
+        "count": count,
+    }
+    return render(request, "name_generator/generate.html", context)

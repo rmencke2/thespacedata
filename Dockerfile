@@ -19,6 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --no-cache-dir whitenoise
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+CMD ["/entrypoint.sh"]
+#CMD ["/bin/sh", "-lc", "/entrypoint.sh"]
 
 # App code
 COPY . .
@@ -31,6 +37,8 @@ RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8080
 
-CMD bash -lc "python manage.py collectstatic --noinput && \
-              python manage.py migrate --noinput && \
-              gunicorn myproject.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 120""
+CMD ["sh", "-c", "\
+  python manage.py migrate --noinput && \
+  python manage.py collectstatic --noinput && \
+  gunicorn myproject.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 120 \
+"]
