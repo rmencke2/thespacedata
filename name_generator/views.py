@@ -1,30 +1,58 @@
 # name_generator/views.py
 from django.shortcuts import render
-from django.http import JsonResponse
-from .services import generate_names
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_http_methods
+from .services import generate_names, ServiceError  # your services.py
 
-def generator_page(request):
-    return render(request, "name_generator/form.html")
-
+@require_http_methods(["GET", "POST"])
 def generate_view(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
+    if request.method == "GET":
+        # show form
+        return render(request, "name_generator/form.html")
 
-    industry = request.POST.get("industry", "")
-    vibe = request.POST.get("vibe", "")
+    # POST: generate names
+    seed = (request.POST.get("seed") or "").strip()
+    count_raw = request.POST.get("count") or "10"
     try:
-        count = int(request.POST.get("count", "10"))
+        count = max(1, min(50, int(count_raw)))
     except ValueError:
-        count = 10
+        return HttpResponseBadRequest("Invalid count")
 
-    names = generate_names(industry, vibe, count)
-    if not names:
-        # Don’t 500; tell the user plainly
-        return JsonResponse(
-            {
-                "error": "Could not generate names. Check OpenAI key/model and try again.",
-                "names": [],
-            },
+    if not seed:
+        return HttpResponseBadRequest("Missing 'seed'")
+
+    try:
+        names = generate_names(seed, count=count)
+    except ServiceError as e:
+        # Show a friendly error page; also logged by your LOGGING config
+        return render(
+            request,
+            "name_generator/error.html",
+            {"message": str(e)},
             status=502,
         )
-    return JsonResponse({"names": names})
+
+    return render(
+        request,
+        "name_generator/result.html",
+        {"seed": seed, "count": count, "names": names},
+    )
+
+# Optional JSON endpoint
+def api_generate(request):
+    seed = (request.GET.get("seed") or "").strip()
+    count_raw = request.GET.get("count") or "10"
+    try:
+        count = max(1, min(50, int(count_raw)))
+    except ValueError:
+        return JsonResponse({"error": "Invalid count"}, status=400)
+    if not seed:
+        return JsonResponse({"error": "Missing 'seed'"}, status=400)
+    try:
+        names = generate_names(seed, count=count)
+    except ServiceError as e:
+        return JsonResponse({"error": str(e)}, status=502)
+    return JsonResponse({"seed": seed, "count": count, "names": names})
+
+# Keep compatibility with urls that expect views.generate
+generate = generate_view
