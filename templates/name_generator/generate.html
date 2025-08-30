@@ -5,7 +5,7 @@
 {% block content %}
 <h1 class="text-4xl font-semibold mb-8">Business Name Generator</h1>
 
-<form id="name-form" method="post" class="space-y-6">
+<form id="name-form" method="post" class="space-y-6"  enctype="multipart/form-data">
   {% csrf_token %}
 
   <!-- Single prompt (default) -->
