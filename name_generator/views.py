@@ -8,58 +8,61 @@ from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from .models import NameIdea
-from .services import generate_names, ServiceError  # keep import available
+from .services import generate_names, ServiceError  
+from .forms import NameRequestForm 
 
 log = logging.getLogger(__name__)
 
 
 def health(request: HttpRequest) -> HttpResponse:
-    """Simple health endpoint for liveness checks."""
     return HttpResponse("ok")
 
 
 @require_http_methods(["GET", "POST"])
 def generate(request: HttpRequest) -> HttpResponse:
     """
-    Render the name generator page.
-
-    GET: show the form.
-    POST: call the service to generate names and persist a NameIdea row.
-    Never raises—renders a friendly page even on failure.
+    GET: render empty form
+    POST: validate form, call OpenAI service, persist attempt
     """
+    names: list[str] = []
+
     if request.method == "GET":
-        return render(request, "name_generator/generate.html", {"names": []})
+        form = NameRequestForm()
+        return render(request, "name_generator/generate.html", {"form": form, "names": names})
 
     # POST
-    industry = (request.POST.get("industry") or "").strip()
-    vibe = (request.POST.get("vibe") or "").strip()
-    keywords = (request.POST.get("keywords") or "").strip()
-    count_str = request.POST.get("count") or "10"
-    try:
-        count = max(1, min(50, int(count_str)))
-    except ValueError:
-        count = 10
+    form = NameRequestForm(request.POST)
+    if not form.is_valid():
+        # show validation errors + no results
+        return render(request, "name_generator/generate.html", {"form": form, "names": names})
+
+    # Map form fields to your existing service expectations
+    prompt   = (form.cleaned_data.get("prompt") or "").strip()
+    industry = (form.cleaned_data.get("industry") or "").strip()
+    style    = (form.cleaned_data.get("style") or "").strip()  
+    count    = form.cleaned_data.get("count") or 10
 
     try:
-        names = generate_names(industry=industry, vibe=vibe, count=count)
+        names = generate_names(industry=industry, vibe=style, count=count)
     except ServiceError as e:
         log.exception("ServiceError generating names: %s", e)
         names = []
 
-    # Persist the attempt (even if names is empty—useful for debugging)
+    # Persist attempt (prompt -> keywords, style -> style)
     NameIdea.objects.create(
-        user=getattr(request, "user", None) if getattr(request, "user", None).is_authenticated else None,
-        keywords=keywords,
+        user=request.user if getattr(request, "user", None) and request.user.is_authenticated else None,
+        keywords=prompt,            
         industry=industry,
-        style=vibe,
+        style=style,
         result="\n".join(names),
     )
 
-    context: Dict[str, Any] = {
+    ctx: Dict[str, Any] = {
+        "form": form,        
         "names": names,
         "industry": industry,
-        "vibe": vibe,
-        "keywords": keywords,
+        "vibe": style,       
+        "keywords": prompt,
         "count": count,
     }
-    return render(request, "name_generator/generate.html", context)
+    return render(request, "name_generator/generate.html", ctx)
