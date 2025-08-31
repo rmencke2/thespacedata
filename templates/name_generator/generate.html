@@ -50,9 +50,14 @@
   </details>
 
   <div class="flex items-center gap-4">
-    <button type="submit"
-            class="inline-flex items-center px-5 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-      Generate
+    <button id="generate-btn" type="submit"
+    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed">
+      <!-- Spinner (hidden by default) -->
+      <svg id="btn-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+        </svg>
+      <span id="btn-text">Generate</span>
     </button>
     <p class="text-sm text-slate-500">Press <b>Enter</b> to submit · <b>Shift+Enter</b> for newline</p>
   </div>
@@ -113,17 +118,37 @@
 
 {% block body_scripts %}
 <script>
-  // Press Enter to submit; Shift+Enter for newline
   (function () {
-    const form = document.getElementById('name-form');
-    const ta   = document.getElementById('id_prompt');
-    if (form && ta) {
+    const form   = document.getElementById('name-form');
+    const ta     = document.getElementById('id_prompt');
+    const btn    = document.getElementById('generate-btn');
+    const spin   = document.getElementById('btn-spinner');
+    const btnTxt = document.getElementById('btn-text');
+
+    // Enter submits; Shift+Enter inserts newline
+    if (ta && form) {
       ta.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           form.requestSubmit ? form.requestSubmit() : form.submit();
         }
       });
+    }
+
+    // Show spinner on submit and prevent double-submit
+    if (form && btn && spin && btnTxt) {
+      form.addEventListener('submit', function () {
+        // Visual state
+        spin.classList.remove('hidden');
+        btnTxt.textContent = 'Generating...';
+        btn.setAttribute('aria-busy', 'true');
+        btn.disabled = true;
+
+        // Disable all inputs to avoid changes while sending
+        Array.from(form.elements).forEach(el => {
+          if (el instanceof HTMLElement) el.setAttribute('disabled', 'disabled');
+        });
+      }, { once: true }); // ensure this runs only once per page load
     }
   }());
 </script>
