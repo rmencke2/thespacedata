@@ -5,7 +5,8 @@ Works locally and on AWS Elastic Beanstalk.
 
 - DEBUG controlled by env (default False)
 - ALLOWED_HOSTS & CSRF_TRUSTED_ORIGINS from env, with safe defaults
-- WhiteNoise serves static files (you can move to S3/CloudFront later)
+- WhiteNoise serves static files
+- Media (uploads, generated images) stored on S3
 """
 
 from pathlib import Path
@@ -16,63 +17,45 @@ import os
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # -----------------------------------------------------------------------------
 # Security
 # -----------------------------------------------------------------------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-me-for-local-only")
-
-# DEBUG: False by default. Set DEBUG=true in env for local dev on EB if needed.
-# --- Host & security settings -----------------------------------------------
 DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
 
-# ---- Hosts -------------------------------------------------------------------
-# If ALLOWED_HOSTS env is set, it wins (comma-separated).
-# Otherwise allow localhost plus your EB CNAME (add your custom domain later).
 _env_hosts = os.getenv("ALLOWED_HOSTS", "")
 if _env_hosts.strip():
     ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
 else:
-     ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com"]
+    ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com"]
 
-
-# CSRF: trust the public origins (scheme + host). If env set, it wins.
-# Trust these origins for CSRF. (Include EB and your custom domains.)
 _env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _env_csrf.strip():
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()]
 else:
     CSRF_TRUSTED_ORIGINS = [
-        # Add your domains here as needed:
         "https://thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
-        # "https://yourdomain.com", "https://www.yourdomain.com",
     ]
 
-# Behind ALB/App Runner so Django knows original scheme
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-# One boolean to control HTTPS behavior (default ON in prod)
 SECURE_SSL_REDIRECT = (
     os.getenv("SECURE_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
     and not DEBUG
 )
-
-# App Runner health check must stay HTTP
 SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 
-# Cookies track the same setting
 SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
 CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
 
-# HSTS only when we’re actually forcing HTTPS
 if SECURE_SSL_REDIRECT:
-    SECURE_HSTS_SECONDS = 60 * 60 * 24  # 1 day starter; raise later
+    SECURE_HSTS_SECONDS = 60 * 60 * 24
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
 else:
     SECURE_HSTS_SECONDS = 0
+
 # -----------------------------------------------------------------------------
-# OpenAI API (used by your generators)
+# OpenAI API
 # -----------------------------------------------------------------------------
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-nano")
@@ -81,13 +64,15 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-nano")
 # Applications
 # -----------------------------------------------------------------------------
 INSTALLED_APPS = [
-    # Django core
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third-party
+    "storages",
 
     # Your apps
     "color_picker",
@@ -134,7 +119,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "myproject.wsgi.application"
 
 # -----------------------------------------------------------------------------
-# Database (SQLite for now; swap to RDS/Postgres later)
+# Database (SQLite now; RDS/Postgres later)
 # -----------------------------------------------------------------------------
 DATABASES = {
     "default": {
@@ -142,6 +127,7 @@ DATABASES = {
         "NAME": os.getenv("SQLITE_PATH", "/tmp/db.sqlite3"),
     }
 }
+
 # -----------------------------------------------------------------------------
 # Password validation
 # -----------------------------------------------------------------------------
@@ -165,40 +151,56 @@ USE_TZ = True
 # -----------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]  # optional (for site.css etc.)
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# Django 5 storage config (STATICFILES_STORAGE is removed)
+# Default storage: MEDIA → S3, STATIC → Whitenoise
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
 }
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media" 
+# --- AWS S3 for MEDIA ---
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN")  # e.g., CloudFront domain
+
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
+if AWS_STORAGE_BUCKET_NAME:
+    if AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+    else:
+        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
+else:
+    # Local fallback (DEBUG)
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+
 # -----------------------------------------------------------------------------
 # Default PK
 # -----------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # -----------------------------------------------------------------------------
-# Logging (simple console)
+# Logging
 # -----------------------------------------------------------------------------
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {
-        "console": {"class": "logging.StreamHandler"},
-    },
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
-        "django.request": {  # ensures 500s are logged
+        "django.request": {
             "handlers": ["console"],
             "level": "ERROR",
             "propagate": False,
         },
     },
-} 
+}
