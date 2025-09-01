@@ -27,7 +27,7 @@ _env_hosts = os.getenv("ALLOWED_HOSTS", "")
 if _env_hosts.strip():
     ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
 else:
-    ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com"]
+    ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com", "wqustiskhc.us-east-1.awsapprunner.com"]
 
 _env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if _env_csrf.strip():
@@ -35,7 +35,9 @@ if _env_csrf.strip():
 else:
     CSRF_TRUSTED_ORIGINS = [
         "https://thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
+        "https://wqustiskhc.us-east-1.awsapprunner.com",
     ]
+
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = (
@@ -70,10 +72,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party
     "storages",
-
     # Your apps
     "color_picker",
     "logo_generator",
@@ -164,20 +164,30 @@ STORAGES = {
 }
 
 # --- AWS S3 for MEDIA ---
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
-AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN")  # e.g., CloudFront domain
+USE_S3 = os.getenv("USE_S3", "true").lower() in ("1","true","yes")
 
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
-AWS_QUERYSTRING_AUTH = False
-AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+if USE_S3:
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_S3_CUSTOM_DOMAIN    = os.getenv("AWS_S3_CUSTOM_DOMAIN", f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    MEDIA_URL = f"https://thespacebucket-20250909.s3.us-east-1.amazonaws.com/"
+else:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+
 
 if AWS_STORAGE_BUCKET_NAME:
     if AWS_S3_CUSTOM_DOMAIN:
-        MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+        MEDIA_URL = f"https://thespacebucket-20250909.s3.us-east-1.amazonaws.com/"
     else:
-        MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
+        MEDIA_URL = f"https://thespacebucket-20250909.s3.amazonaws.com/"
 else:
     # Local fallback (DEBUG)
     MEDIA_URL = "/media/"
