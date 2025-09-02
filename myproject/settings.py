@@ -23,23 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-me-for-local-only")
 DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
 
-_env_hosts = os.getenv("ALLOWED_HOSTS", "")
-if _env_hosts.strip():
-    ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()]
-else:
-    ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".elasticbeanstalk.com", "wqustiskhc.us-east-1.awsapprunner.com"]
-
-_env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-if _env_csrf.strip():
-    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()]
-else:
-    CSRF_TRUSTED_ORIGINS = [
-        "https://thespacedata-env.eba-2hmzdqix.us-east-1.elasticbeanstalk.com",
-        "https://wqustiskhc.us-east-1.awsapprunner.com",
-    ]
-
-
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True   
+
+
 SECURE_SSL_REDIRECT = (
     os.getenv("SECURE_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
     and not DEBUG
@@ -48,6 +35,19 @@ SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 
 SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
 CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+
+_env_hosts = os.getenv("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [h.strip() for h in _env_hosts.split(",") if h.strip()] or [
+    "wqustiskhc.us-east-1.awsapprunner.com",
+    "localhost",
+    "127.0.0.1",
+    "*",
+]
+
+_env_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()] or [
+    "https://wqustiskhc.us-east-1.awsapprunner.com",
+]
 
 if SECURE_SSL_REDIRECT:
     SECURE_HSTS_SECONDS = 60 * 60 * 24
