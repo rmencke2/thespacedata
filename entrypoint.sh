@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# Optional: database migrations (won’t fail deploy if no DB changes)
-python manage.py migrate --noinput || true
+echo "Running entrypoint.sh..."
 
-# Optional: collect static (safe to repeat; uses STATIC_ROOT)
-python manage.py collectstatic --noinput || true
+# Run migrations (safe in container start)
+echo "Applying database migrations..."
+python manage.py migrate --noinput
 
-# Start Gunicorn on the port App Runner expects
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
+# Start Gunicorn
+echo "Starting Gunicorn..."
 exec gunicorn myproject.wsgi:application \
-  --bind 0.0.0.0:${PORT:-8080} \
-  --workers "${GUNICORN_WORKERS:-2}" \
-  --timeout "${GUNICORN_TIMEOUT:-60}" \
-  --access-logfile '-' \
-  --error-logfile '-'
+    --bind 0.0.0.0:8080 \
+    --workers 4 \
+    --threads 4 \
+    --timeout 120
