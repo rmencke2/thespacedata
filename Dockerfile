@@ -13,8 +13,8 @@
     
     # Copy only requirements first for better layer caching
     COPY requirements.txt /app/requirements.txt
-    RUN pip install -r requirements.txt
-    
+    RUN pip install -r /app/requirements.txt
+        
     # Make sure gunicorn & whitenoise are installed (add if not in requirements.txt)
     RUN pip install gunicorn whitenoise
     
