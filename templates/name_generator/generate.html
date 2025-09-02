@@ -108,6 +108,7 @@
     const spin   = document.getElementById('btn-spinner');
     const btnTxt = document.getElementById('btn-text');
 
+    // Enter submits; Shift+Enter inserts newline
     if (ta && form) {
       ta.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -117,14 +118,21 @@
       });
     }
 
+    // Show spinner and prevent double-submit — but DO NOT disable the CSRF field
     if (form && btn && spin && btnTxt) {
       form.addEventListener('submit', function () {
         spin.classList.remove('hidden');
         btnTxt.textContent = 'Generating...';
         btn.setAttribute('aria-busy', 'true');
         btn.disabled = true;
+
+        // If you really want to disable others, skip hidden + csrf field
         Array.from(form.elements).forEach(el => {
-          if (el instanceof HTMLElement) el.setAttribute('disabled', 'disabled');
+          if (!el || !('type' in el)) return;
+          if (el.type === 'hidden') return; // keeps csrfmiddlewaretoken enabled
+          if (el.name === 'csrfmiddlewaretoken') return;
+          if (el === btn) return; // already disabled
+          el.setAttribute('disabled', 'disabled');
         });
       }, { once: true });
     }
