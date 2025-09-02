@@ -5,58 +5,48 @@
 {% block content %}
 <h1 class="text-4xl font-semibold mb-8">Business Name Generator</h1>
 
-<form id="name-form" method="post" class="space-y-6"  enctype="multipart/form-data">
+<form id="name-form" method="post" enctype="multipart/form-data" class="space-y-6">
   {% csrf_token %}
 
-  <!-- Single prompt (default) -->
+  <!-- Prompt -->
   <div>
-    <label class="block text-sm font-medium mb-1" for="id_prompt">
-      Describe what you want
-    </label>
-
-    {{ form.prompt }}  {# <-- THIS actually renders the textarea #}
-
+    <label for="id_prompt" class="block text-sm font-medium mb-1">Describe what you want</label>
+    {{ form.prompt }}
     {% if form.prompt.errors %}
-      {% for e in form.prompt.errors %}
-        <p class="mt-1 text-sm text-red-600">{{ e }}</p>
-      {% endfor %}
+      <p class="mt-1 text-sm text-red-600">{{ form.prompt.errors|join:", " }}</p>
     {% endif %}
-
     <p class="mt-1 text-xs text-slate-500">
-      Tip: you can add hints like <code>industry: fintech</code> or
-      <code>style: playful, premium</code>.
+      Tip: you can add hints like <code>industry: fintech</code> or <code>style: playful, premium</code>.
     </p>
   </div>
 
-  <!-- Advanced options (collapsible) -->
+  <!-- Advanced options -->
   <details class="rounded-lg border border-slate-200">
-    <summary class="px-4 py-3 cursor-pointer select-none font-medium">
-      Advanced options
-    </summary>
+    <summary class="px-4 py-3 cursor-pointer select-none font-medium">Advanced options</summary>
     <div class="p-4 space-y-4">
       <div>
-        <label class="block text-sm font-medium mb-1" for="id_industry">Industry</label>
+        <label for="id_industry" class="block text-sm font-medium mb-1">Industry</label>
         {{ form.industry }}
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1" for="id_style">Style keywords</label>
+        <label for="id_style" class="block text-sm font-medium mb-1">Style keywords</label>
         {{ form.style }}
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1" for="id_count">How many?</label>
+        <label for="id_count" class="block text-sm font-medium mb-1">How many?</label>
         {{ form.count }}
       </div>
     </div>
   </details>
 
+  <!-- Submit -->
   <div class="flex items-center gap-4">
     <button id="generate-btn" type="submit"
-    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed">
-      <!-- Spinner (hidden by default) -->
+      class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed">
       <svg id="btn-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
-        </svg>
+      </svg>
       <span id="btn-text">Generate</span>
     </button>
     <p class="text-sm text-slate-500">Press <b>Enter</b> to submit · <b>Shift+Enter</b> for newline</p>
@@ -66,27 +56,23 @@
 <!-- Suggestions -->
 <section class="mt-10">
   <h2 class="text-2xl font-semibold mb-4">Suggestions</h2>
-  {% if names and names|length %}
+  {% if names %}
     <ol class="list-decimal pl-6 space-y-3">
       {% for n in names %}
-        <li class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <span class="font-medium">{{ n }}</span>
-            {% if used_openai is not None %}
-              <span class="rounded-full border px-2.5 py-0.5 text-xs
-                           {% if used_openai %}border-indigo-300 text-indigo-700 bg-indigo-50
-                           {% else %}border-slate-300 text-slate-700 bg-slate-50{% endif %}">
-                {% if used_openai %}OpenAI{% else %}Local{% endif %}
-              </span>
-            {% endif %}
-          </div>
+        <li class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between gap-3">
+          <span class="font-medium">{{ n }}</span>
+          {% if used_openai is not None %}
+            <span class="rounded-full border px-2.5 py-0.5 text-xs
+              {% if used_openai %}border-indigo-300 text-indigo-700 bg-indigo-50
+              {% else %}border-slate-300 text-slate-700 bg-slate-50{% endif %}">
+              {{ used_openai|yesno:"OpenAI,Local" }}
+            </span>
+          {% endif %}
         </li>
       {% endfor %}
     </ol>
   {% else %}
-    <ol class="list-decimal pl-6">
-      <li class="text-slate-500">No suggestions yet.</li>
-    </ol>
+    <p class="text-slate-500">No suggestions yet.</p>
   {% endif %}
 </section>
 
@@ -97,12 +83,10 @@
     <ul class="space-y-2">
       {% for item in recent %}
         <li>
-          <a class="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50"
-             href="{% url 'name_generator:generate' %}?id={{ item.id }}">
+          <a href="{% url 'name_generator:generate' %}?id={{ item.id }}"
+             class="block rounded-lg border border-zinc-200 px-4 py-3 hover:bg-zinc-50">
             <div class="flex items-center justify-between">
-              <div class="truncate">
-                <span class="font-medium">{{ item.prompt|default:item.keywords|truncatechars:80 }}</span>
-              </div>
+              <div class="truncate font-medium">{{ item.prompt|default:item.keywords|truncatechars:80 }}</div>
               <span class="text-xs text-slate-500">{{ item.created_at|date:"M d, H:i" }}</span>
             </div>
           </a>
@@ -113,7 +97,6 @@
     <p class="text-slate-500">No runs yet.</p>
   {% endif %}
 </section>
-
 {% endblock %}
 
 {% block body_scripts %}
@@ -125,7 +108,6 @@
     const spin   = document.getElementById('btn-spinner');
     const btnTxt = document.getElementById('btn-text');
 
-    // Enter submits; Shift+Enter inserts newline
     if (ta && form) {
       ta.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -135,21 +117,17 @@
       });
     }
 
-    // Show spinner on submit and prevent double-submit
     if (form && btn && spin && btnTxt) {
       form.addEventListener('submit', function () {
-        // Visual state
         spin.classList.remove('hidden');
         btnTxt.textContent = 'Generating...';
         btn.setAttribute('aria-busy', 'true');
         btn.disabled = true;
-
-        // Disable all inputs to avoid changes while sending
         Array.from(form.elements).forEach(el => {
           if (el instanceof HTMLElement) el.setAttribute('disabled', 'disabled');
         });
-      }, { once: true }); // ensure this runs only once per page load
+      }, { once: true });
     }
-  }());
+  })();
 </script>
 {% endblock %}

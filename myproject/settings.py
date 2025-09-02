@@ -155,8 +155,8 @@ STORAGES = {
 USE_S3 = os.getenv("USE_S3", "true").lower() in ("1", "true", "yes")
 
 if USE_S3:
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")  # e.g. thespacedata-media
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_STORAGE_BUCKET_NAME = (os.getenv("AWS_STORAGE_BUCKET_NAME") or "").strip() # e.g. thespacedata-media
+    AWS_S3_REGION_NAME = (os.getenv("AWS_S3_REGION_NAME") or "us-east-1").strip()
     AWS_S3_CUSTOM_DOMAIN = os.getenv(
         "AWS_S3_CUSTOM_DOMAIN",
         f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com" if AWS_STORAGE_BUCKET_NAME else ""
