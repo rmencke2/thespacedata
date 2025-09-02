@@ -32,13 +32,10 @@
     # 2) Copy the rest of the project into the image
     COPY . .
 
-    # 3) Copy entrypoint and make it executable
     COPY entrypoint.sh /app/entrypoint.sh
     RUN chmod +x /app/entrypoint.sh
-
-    # 4) App Runner defaults to 8080; we’ll use it
+    
     ENV PORT=8080
     EXPOSE 8080
-
-    # 5) Start the container with our script
-    CMD ["/app/entrypoint.sh"]
+    
+    ENTRYPOINT ["/app/entrypoint.sh"]

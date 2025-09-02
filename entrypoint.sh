@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Be careful with -e here; we want the server to start even if a prep step fails.
+set -o pipefail
 
-echo "Running entrypoint.sh..."
+# Default port for App Runner
+PORT="${PORT:-8080}"
+WORKERS="${WEB_CONCURRENCY:-2}"
+TIMEOUT="${WEB_TIMEOUT:-120}"
 
-# Run migrations (safe in container start)
-echo "Applying database migrations..."
-python manage.py migrate --noinput
+echo "[entrypoint] collectstatic…"
+python manage.py collectstatic --noinput || echo "[entrypoint] collectstatic failed (continuing)"
 
-# Collect static files
-echo "Collecting static files..."
-python manage.py collectstatic --noinput
+echo "[entrypoint] migrate…"
+python manage.py migrate --noinput || echo "[entrypoint] migrate failed (continuing)"
 
-# Start Gunicorn
-echo "Starting Gunicorn..."
+echo "[entrypoint] starting gunicorn on 0.0.0.0:${PORT}…"
 exec gunicorn myproject.wsgi:application \
-    --bind 0.0.0.0:8080 \
-    --workers 4 \
-    --threads 4 \
-    --timeout 120
+  --bind "0.0.0.0:${PORT}" \
+  --workers "${WORKERS}" \
+  --timeout "${TIMEOUT}" \
+  --access-logfile '-' \
+  --error-logfile '-'
