@@ -1,41 +1,28 @@
-# ---------- build/run stage ----------
-    FROM python:3.12-slim AS app
+FROM python:3.12-slim
 
-    ENV PYTHONDONTWRITEBYTECODE=1 \
-        PYTHONUNBUFFERED=1 \
-        PIP_NO_CACHE_DIR=1 \
-        DJANGO_SETTINGS_MODULE=myproject.settings
-    
-    # System deps you might need for pip wheels (adjust as your deps require)
-    RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-      && rm -rf /var/lib/apt/lists/*
-    
-    # Copy only requirements first for better layer caching
-    #COPY requirements.txt /app/requirements.txt
-    #RUN pip install -r /app/requirements.txt
-        
-    # Make sure gunicorn & whitenoise are installed (add if not in requirements.txt)
-    RUN pip install gunicorn whitenoise
-    
-    # Copy project
-    COPY . /app
-    
-    # Make sure we’re in /app
-    WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-    # 1) Copy requirements and install from the SAME path
-    COPY requirements.txt .
-    RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
 
-    # 2) Copy the rest of the project into the image
-    COPY . .
+# System deps (cairo, pillow libs optional depending on your project)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-    COPY entrypoint.sh /app/entrypoint.sh
-    RUN chmod +x /app/entrypoint.sh
-    
-    ENV PORT=8080
-    EXPOSE 8080
-    
-    ENTRYPOINT ["/app/entrypoint.sh"]
+# Requirements first for caching
+COPY requirements.txt /app/requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# App code
+COPY . /app
+
+# Entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# App Runner listens on 8080
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["/app/entrypoint.sh"]

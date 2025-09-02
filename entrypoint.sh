@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
-# Be careful with -e here; we want the server to start even if a prep step fails.
-set -o pipefail
+set -euo pipefail
 
-# Default port for App Runner
-PORT="${PORT:-8080}"
-WORKERS="${WEB_CONCURRENCY:-2}"
-TIMEOUT="${WEB_TIMEOUT:-120}"
+echo "[entrypoint] DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-<unset>}"
+echo "[entrypoint] DEBUG=${DJANGO_DEBUG:-<unset>}"
+echo "[entrypoint] Collecting static & migrating…"
 
-echo "[entrypoint] collectstatic…"
-python manage.py collectstatic --noinput || echo "[entrypoint] collectstatic failed (continuing)"
+# SQLite lives in /tmp (writable on App Runner)
+mkdir -p /tmp /tmp/media /tmp/staticfiles
 
-echo "[entrypoint] migrate…"
-python manage.py migrate --noinput || echo "[entrypoint] migrate failed (continuing)"
+# Best-effort migrations; if you want hard-fail, remove `|| true`
+python manage.py migrate --noinput || true
+python manage.py collectstatic --noinput || true
 
-echo "[entrypoint] starting gunicorn on 0.0.0.0:${PORT}…"
+echo "[entrypoint] Starting gunicorn…"
 exec gunicorn myproject.wsgi:application \
-  --bind "0.0.0.0:${PORT}" \
-  --workers "${WORKERS}" \
-  --timeout "${TIMEOUT}" \
-  --access-logfile '-' \
-  --error-logfile '-'
+  --bind 0.0.0.0:${PORT:-8080} \
+  --workers 2 \
+  --timeout 90 \
+  --access-logfile - \
+  --error-logfile -
