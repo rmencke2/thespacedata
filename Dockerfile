@@ -6,8 +6,6 @@
         PIP_NO_CACHE_DIR=1 \
         DJANGO_SETTINGS_MODULE=myproject.settings
     
-    WORKDIR /app
-    
     # System deps you might need for pip wheels (adjust as your deps require)
     RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -23,14 +21,16 @@
     # Copy project
     COPY . /app
     
-    # Copy the root entrypoint (NOT docker/entrypoint.sh)
+    ## --- runtime config ---
+    WORKDIR /app
+
+    # copy entrypoint and make it executable
     COPY entrypoint.sh /app/entrypoint.sh
     RUN chmod +x /app/entrypoint.sh
-    CMD ["/app/entrypoint.sh"]
-    
-    # Expose the port App Runner hits
+
+    # App Runner’s default health-check port
     ENV PORT=8080
     EXPOSE 8080
-    
-    # One entrypoint only (no extra CMDs elsewhere)
-    ENTRYPOINT ["/entrypoint.sh"]
+
+    # start the app via entrypoint
+    CMD ["/app/entrypoint.sh"]

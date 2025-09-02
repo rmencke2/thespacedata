@@ -1,22 +1,16 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# Optional: make logs unbuffered for nicer App Runner logs
-export PYTHONUNBUFFERED=1
+# Optional: database migrations (won’t fail deploy if no DB changes)
+python manage.py migrate --noinput || true
 
-# Sanity: ensure we’re in /app
-cd /app
+# Optional: collect static (safe to repeat; uses STATIC_ROOT)
+python manage.py collectstatic --noinput || true
 
-echo "[entrypoint] Running migrations…"
-python manage.py migrate --noinput
-
-echo "[entrypoint] Collecting static…"
-python manage.py collectstatic --noinput
-
-echo "[entrypoint] Starting gunicorn…"
-# Bind to 8080 because your App Runner health check hits port 8080
+# Start Gunicorn on the port App Runner expects
 exec gunicorn myproject.wsgi:application \
-  --bind 0.0.0.0:8080 \
+  --bind 0.0.0.0:${PORT:-8080} \
   --workers "${GUNICORN_WORKERS:-2}" \
   --timeout "${GUNICORN_TIMEOUT:-60}" \
-  --access-logfile '-' --error-logfile '-'
+  --access-logfile '-' \
+  --error-logfile '-'
