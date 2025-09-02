@@ -145,17 +145,13 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# WhiteNoise + S3 storages
-STORAGES = {
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-    "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
-}
-
 # Media → S3 (env-driven)
 USE_S3 = os.getenv("USE_S3", "true").lower() in ("1", "true", "yes")
 
+# WhiteNoise works without specifying STATICFILES_STORAGE, but on Django 4.2+
+# you should set the staticfiles backend via STORAGES.
 if USE_S3:
-    AWS_STORAGE_BUCKET_NAME = (os.getenv("AWS_STORAGE_BUCKET_NAME") or "").strip() # e.g. thespacedata-media
+    AWS_STORAGE_BUCKET_NAME = (os.getenv("AWS_STORAGE_BUCKET_NAME") or "").strip()  # e.g. "thespacedata-media"
     AWS_S3_REGION_NAME = (os.getenv("AWS_S3_REGION_NAME") or "us-east-1").strip()
     AWS_S3_CUSTOM_DOMAIN = os.getenv(
         "AWS_S3_CUSTOM_DOMAIN",
@@ -166,18 +162,35 @@ if USE_S3:
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
 
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-
+    # Media URL (still fine if bucket not fully configured; app won’t crash)
     if AWS_STORAGE_BUCKET_NAME and AWS_S3_CUSTOM_DOMAIN:
         MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
     else:
-        # Fallback if bucket not configured yet
         MEDIA_URL = "/media/"
         MEDIA_ROOT = BASE_DIR / "media"
+
+    # Django 4.2+ unified storages
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 else:
-    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+    # Local media fallback (NO legacy DEFAULT_FILE_STORAGE — use STORAGES)
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 # -----------------------------------------------------------------------------
 # Defaults
