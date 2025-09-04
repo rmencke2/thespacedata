@@ -1,0 +1,13 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    # If collectstatic fails due to S3/env, we’ll start with local storage (see step 3)
+    - python manage.py collectstatic --noinput
+run:
+  runtime-version: 3.11
+  command: gunicorn myproject.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 8 --timeout 60
+  network:
+    port: 8080

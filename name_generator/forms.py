@@ -7,6 +7,7 @@ class NameRequestForm(forms.Form):
         widget=forms.Textarea(attrs={
             "id": "id_prompt",  # explicit id (optional—Django auto-adds anyway)
             "rows": 4,
+            "name": "prompt",
             "placeholder": (
                 "e.g. Sustainable laundry pickup for busy families; "
                 "fresh, modern, upbeat; avoid cheesy puns; 8–12 letter names."
