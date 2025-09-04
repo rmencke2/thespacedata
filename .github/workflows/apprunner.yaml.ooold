@@ -4,7 +4,7 @@ on: { push: { branches: [ main ] } }
 env:
   AWS_REGION: us-east-1
   IMAGE_REPO_NAME: thespacedata
-  SERVICE_NAME: thespacedata-service
+  SERVICE_NAME: thespacedata-service 
 
 jobs:
   deploy:
