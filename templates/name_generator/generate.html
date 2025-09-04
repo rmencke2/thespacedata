@@ -120,21 +120,15 @@
 
     // Show spinner and prevent double-submit — but DO NOT disable the CSRF field
     if (form && btn && spin && btnTxt) {
-      form.addEventListener('submit', function () {
-        spin.classList.remove('hidden');
-        btnTxt.textContent = 'Generating...';
-        btn.setAttribute('aria-busy', 'true');
-        btn.disabled = true;
-
-        // If you really want to disable others, skip hidden + csrf field
-        Array.from(form.elements).forEach(el => {
-          if (!el || !('type' in el)) return;
-          if (el.type === 'hidden') return; // keeps csrfmiddlewaretoken enabled
-          if (el.name === 'csrfmiddlewaretoken') return;
-          if (el === btn) return; // already disabled
-          el.setAttribute('disabled', 'disabled');
-        });
-      }, { once: true });
+      form.addEventListener('formdata', () => {
+  Array.from(form.elements).forEach(el => {
+    if (!el || !('type' in el)) return;
+    if (el.type === 'hidden') return;
+    if (el.name === 'csrfmiddlewaretoken') return;
+    if (el === btn) return;
+    el.disabled = true;
+  });
+}, { once: true });
     }
   })();
 </script>
