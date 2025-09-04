@@ -1,0 +1,44 @@
+name: Build & Deploy to App Runner
+on: { push: { branches: [ main ] } }
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_REPO_NAME: thespacedata
+  SERVICE_NAME: thespacedata-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<GHA-OIDC-ROLE>
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build & Push
+        run: |
+          set -euo pipefail
+          ACC=$(aws sts get-caller-identity --query Account --output text)
+          ECR=$ACC.dkr.ecr.${AWS_REGION}.amazonaws.com
+          SHA=${GITHUB_SHA::7}
+          docker build --build-arg GIT_SHA=$SHA -t $ECR/${IMAGE_REPO_NAME}:$SHA -t $ECR/${IMAGE_REPO_NAME}:main .
+          docker push $ECR/${IMAGE_REPO_NAME}:$SHA
+          docker push $ECR/${IMAGE_REPO_NAME}:main
+          echo IMAGE_URI=$ECR/${IMAGE_REPO_NAME}:main >> $GITHUB_ENV
+      - name: Create/Update App Runner
+        run: |
+          set -euo pipefail
+          SVC=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+          if [ -z "$SVC" ] || [ "$SVC" = "None" ]; then
+            aws apprunner create-service \
+              --service-name "${SERVICE_NAME}" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AutoDeploymentsEnabled=true" \
+              --instance-configuration "Cpu=1 vCPU,Memory=2 GB" \
+              --health-check-configuration "Protocol=HTTP,Path=/health/,Interval=10,Timeout=5,HealthyThreshold=1,UnhealthyThreshold=5"
+          else
+            aws apprunner update-service \
+              --service-arn "$SVC" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080}},AutoDeploymentsEnabled=true"
+          fi
