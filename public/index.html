@@ -2557,6 +2557,94 @@
           console.error('❌ LogoGenerator element not found!');
         }
         
+        // Add event listeners to buttons (using event listeners instead of onclick)
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const heroSignupBtn = document.getElementById('heroSignupBtn');
+        const heroLoginBtn = document.getElementById('heroLoginBtn');
+        const allToolsBtn = document.getElementById('allToolsBtn');
+        
+        if (loginBtn) {
+          loginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔵 Login button clicked via event listener');
+            if (typeof window.openLoginModal === 'function') {
+              window.openLoginModal();
+            } else {
+              console.error('❌ window.openLoginModal is not a function!');
+            }
+          });
+          console.log('✅ Added event listener to login button');
+        } else {
+          console.error('❌ Login button not found!');
+        }
+        
+        if (signupBtn) {
+          signupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🟢 Signup button clicked via event listener');
+            if (typeof window.openSignupModal === 'function') {
+              window.openSignupModal();
+            } else {
+              console.error('❌ window.openSignupModal is not a function!');
+            }
+          });
+          console.log('✅ Added event listener to signup button');
+        } else {
+          console.error('❌ Signup button not found!');
+        }
+        
+        if (heroSignupBtn) {
+          heroSignupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🟢 Hero signup button clicked');
+            if (typeof window.openSignupModal === 'function') {
+              window.openSignupModal();
+            }
+          });
+          console.log('✅ Added event listener to hero signup button');
+        }
+        
+        if (heroLoginBtn) {
+          heroLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔵 Hero login button clicked');
+            if (typeof window.openLoginModal === 'function') {
+              window.openLoginModal();
+            }
+          });
+          console.log('✅ Added event listener to hero login button');
+        }
+        
+        if (allToolsBtn) {
+          allToolsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🟢 All tools button clicked');
+            if (typeof window.openSignupModal === 'function') {
+              window.openSignupModal();
+            }
+          });
+          console.log('✅ Added event listener to all tools button');
+        }
+        
+        // Add event listeners to tool cards
+        document.querySelectorAll('[data-tool-card="true"]').forEach(card => {
+          card.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🟡 Tool card clicked');
+            if (typeof window.showAuthGate === 'function') {
+              window.showAuthGate();
+            }
+          });
+        });
+        console.log(`✅ Added event listeners to ${document.querySelectorAll('[data-tool-card="true"]').length} tool cards`);
+        
         // Initialize i18n first
         await window.i18n.init();
         
