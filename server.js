@@ -45,6 +45,24 @@ app.use(
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => {
+      // Skip rate limiting for specific user
+      // Check if user is authenticated and email contains "rasmusmencke"
+      if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+        const email = req.user.email || '';
+        if (email.toLowerCase().includes('rasmusmencke')) {
+          return true; // Skip rate limiting
+        }
+      }
+      // Also check session-based auth
+      if (req.session && req.session.userId) {
+        // We'll need to check the email from the database
+        // For now, we'll allow it if there's a session
+        // This is a simple bypass - you may want to check the actual email
+        return false; // Don't skip for session-based (we'll check email below)
+      }
+      return false; // Don't skip for others
+    },
   }),
 );
 
