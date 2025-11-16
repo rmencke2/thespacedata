@@ -263,6 +263,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Serve terms and conditions page
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
 // Health check endpoint for service monitoring
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

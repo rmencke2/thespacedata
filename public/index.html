@@ -983,7 +983,7 @@
       <!-- Hero Section -->
       <div class="hero hero-gradient">
         <div style="max-width: 1200px; margin: 0 auto; padding: 100px 20px 80px; text-align: center;">
-          <h1 style="font-size: 56px; font-weight: 700; margin-bottom: 24px; color: #fff; line-height: 1.2;" data-i18n="homepage.hero.title">Logo Generator Online - AI-Powered Design Tools</h1>
+          <h1 style="font-size: 56px; font-weight: 700; margin-bottom: 24px; color: #fff; line-height: 1.2;">All the tools for a small business to get started</h1>
           <p class="subtitle" style="font-size: 20px; max-width: 800px; margin: 0 auto 48px; color: #b0b0b0; line-height: 1.6;" data-i18n="homepage.hero.subtitle">Create stunning logos and brand assets online for free. Boost your branding efficiency by 10x with advanced AI, powerful design tools, and seamless exports.</p>
           <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 60px; flex-wrap: wrap;">
             <button class="cta-button primary hero-cta" id="heroSignupBtn" style="font-size: 18px; padding: 16px 40px;" data-i18n="homepage.cta.signup">Start Free Account</button>
@@ -1563,8 +1563,7 @@
         </div>
         <div id="loginError"></div>
         <div class="oauth-buttons">
-          <a href="/auth/google" class="oauth-btn" data-i18n="auth.continueWithGoogle">Continue with Google</a>
-          <a href="/auth/facebook" class="oauth-btn" data-i18n="auth.continueWithFacebook">Continue with Facebook</a>
+          <a href="/auth/google" class="oauth-btn" data-i18n="auth.continueWithGoogle">Sign in with Google</a>
         </div>
         <div class="divider" data-i18n="modal.or">or</div>
         <form id="loginForm" onsubmit="handleLogin(event)">
@@ -1597,17 +1596,12 @@
         </div>
         <div id="signupError"></div>
         <div class="oauth-buttons">
-          <a href="/auth/google" class="oauth-btn">Continue with Google</a>
-          <a href="/auth/facebook" class="oauth-btn">Continue with Facebook</a>
+          <a href="/auth/google" class="oauth-btn">Sign in with Google</a>
         </div>
         <div class="divider">or</div>
         <form id="signupForm" onsubmit="handleSignup(event)">
           <div class="form-group">
-            <label for="signupName" class="optional">Name</label>
-            <input type="text" id="signupName" placeholder="Enter your name (optional)" />
-          </div>
-          <div class="form-group">
-            <label for="signupEmail">Email</label>
+            <label for="signupEmail">Email address</label>
             <input type="email" id="signupEmail" placeholder="Enter your email" required />
           </div>
           <div class="form-group">
@@ -1615,10 +1609,20 @@
             <input type="password" id="signupPassword" placeholder="Enter your password" required minlength="8" />
             <div class="field-hint">Must be at least 8 characters</div>
           </div>
+          <div class="form-group">
+            <label for="signupPasswordConfirm">Confirm Password</label>
+            <input type="password" id="signupPasswordConfirm" placeholder="Confirm your password" required minlength="8" />
+          </div>
+          <div class="form-group" style="display: flex; align-items: flex-start; gap: 8px; margin-top: 16px;">
+            <input type="checkbox" id="signupTerms" required style="margin-top: 4px; cursor: pointer;" />
+            <label for="signupTerms" style="font-size: 13px; color: #8e8e93; cursor: pointer; line-height: 1.4;">
+              I accept the <a href="/terms" target="_blank" style="color: #10a37f; text-decoration: underline;">Terms and Conditions</a>
+            </label>
+          </div>
           <button type="submit" class="auth-btn primary" style="width: 100%; margin-top: 8px;">Sign Up</button>
         </form>
         <div style="text-align: center; margin-top: 16px; font-size: 14px; color: #8e8e93;">
-          Already have an account? <a href="#" onclick="if(typeof window.closeSignupModal === 'function' && typeof window.openLoginModal === 'function') { window.closeSignupModal(); window.openLoginModal(); }" style="color: #10a37f;">Log in</a>
+          Already have an account? <a href="#" onclick="if(typeof window.closeSignupModal === 'function' && typeof window.openLoginModal === 'function') { window.closeSignupModal(); window.openLoginModal(); }" style="color: #10a37f;">Sign in here</a>
         </div>
       </div>
     </div>
