@@ -48,8 +48,22 @@ async function loadTranslations(lang) {
 
 // Get translation for a key
 function t(key, params = {}) {
+  if (!key) return '';
+  
   const langTranslations = translations[currentLanguage] || {};
-  let text = langTranslations[key] || key;
+  let text = langTranslations[key];
+  
+  // If translation not found, try English as fallback
+  if (!text && currentLanguage !== DEFAULT_LANGUAGE) {
+    const enTranslations = translations[DEFAULT_LANGUAGE] || {};
+    text = enTranslations[key];
+  }
+  
+  // If still not found, return the key (for debugging)
+  if (!text) {
+    console.warn(`Translation missing for key: ${key} (language: ${currentLanguage})`);
+    return key;
+  }
 
   // Replace parameters in the format {{param}}
   Object.keys(params).forEach(param => {
@@ -97,6 +111,11 @@ async function setLanguage(lang) {
 
   // Load translations if not already loaded
   await loadTranslations(lang);
+  
+  // Also ensure default language (English) is loaded for fallback
+  if (lang !== DEFAULT_LANGUAGE) {
+    await loadTranslations(DEFAULT_LANGUAGE);
+  }
 
   // Update all translated elements
   updateTranslations();
@@ -143,10 +162,15 @@ function updateTranslations() {
     element.innerHTML = t(key);
   });
 
-  // Update select options with data-i18n-option attribute
+  // Update select options - check for data-i18n first, then use pattern matching
   document.querySelectorAll('select').forEach(select => {
     Array.from(select.options).forEach(option => {
-      if (option.value) {
+      // First check if option has data-i18n attribute
+      const dataI18nKey = option.getAttribute('data-i18n');
+      if (dataI18nKey) {
+        option.textContent = t(dataI18nKey);
+      } else if (option.value) {
+        // Fall back to pattern-based translation
         const optionKey = `option.${select.id}.${option.value}`;
         const translation = t(optionKey);
         if (translation !== optionKey) {

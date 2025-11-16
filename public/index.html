@@ -1824,6 +1824,11 @@
         // Initialize i18n first
         await window.i18n.init();
         
+        // Force update translations after a short delay to ensure DOM is ready
+        setTimeout(() => {
+          window.i18n.updateTranslations();
+        }, 100);
+        
         // Update language selector to current language
         const langSelector = document.getElementById('languageSelector');
         if (langSelector) {
