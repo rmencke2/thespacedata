@@ -572,9 +572,27 @@ app.post(
           return res.status(400).json({ error: 'Invalid meme style' });
       }
 
-      // Apply filters
+      // Build video filter string
+      let videoFilter = '';
       if (filters.length > 0) {
-        ffmpegCommand = ffmpegCommand.videoFilters(filters);
+        // For complex filters with split/merge, we need to handle them differently
+        if (filters.some(f => f.includes('split') || f.includes('hstack'))) {
+          // Complex filter (mirror effect) - use semicolons
+          videoFilter = filters.join(';');
+        } else {
+          // Simple filters - chain with commas
+          videoFilter = filters.join(',');
+        }
+        // Add fps and scale at the end (unless zoompan is used, which handles its own sizing)
+        if (!filters.some(f => f.includes('zoompan'))) {
+          videoFilter += ',fps=10,scale=800:-1:flags=lanczos';
+        } else {
+          // zoompan handles sizing, just add fps
+          videoFilter += ',fps=10';
+        }
+      } else {
+        // No filters - just scale and fps
+        videoFilter = 'fps=10,scale=800:-1:flags=lanczos';
       }
 
       // Convert to GIF with optimization
@@ -582,7 +600,7 @@ app.post(
         ffmpegCommand
           .output(outputPath)
           .outputOptions([
-            '-vf', 'fps=10,scale=800:-1:flags=lanczos',
+            '-vf', videoFilter,
             '-loop', '0',
           ])
           .format('gif')
