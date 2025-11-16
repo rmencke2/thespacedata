@@ -138,20 +138,39 @@ function updateTranslations() {
     } else if (element.tagName === 'INPUT' && (element.type === 'submit' || element.type === 'button')) {
       element.value = translation;
     } else if (element.tagName === 'LABEL') {
-      // For labels, update text but preserve structure (like tooltips)
+      // For labels, update text but preserve structure (like tooltips and optional spans)
       const tooltip = element.querySelector('.tooltip');
-      if (tooltip) {
-        const labelText = element.cloneNode(true);
-        labelText.querySelector('.tooltip').remove();
-        labelText.textContent = translation;
-        element.replaceChild(labelText.firstChild, element.firstChild);
-        element.insertBefore(tooltip, element.firstChild);
+      const optionalSpan = element.querySelector('span.optional');
+      
+      if (tooltip || optionalSpan) {
+        // Preserve child elements, just update the text content
+        // Find the first text node and update it, or insert text before the first child element
+        const firstChild = element.firstChild;
+        if (firstChild && firstChild.nodeType === 3) {
+          // First child is a text node, update it
+          firstChild.textContent = translation + (optionalSpan ? ' ' : '');
+        } else {
+          // No text node, insert one at the beginning
+          const textNode = document.createTextNode(translation + (optionalSpan ? ' ' : ''));
+          element.insertBefore(textNode, element.firstChild);
+        }
       } else {
+        // Simple label - just replace all text content
         element.textContent = translation;
       }
     } else if (element.tagName === 'OPTION') {
       element.textContent = translation;
+    } else if (element.tagName === 'H1' || element.tagName === 'H2' || element.tagName === 'H3' || element.tagName === 'H4' || element.tagName === 'H5' || element.tagName === 'H6') {
+      element.textContent = translation;
+    } else if (element.tagName === 'P' || element.tagName === 'DIV' || element.tagName === 'SPAN') {
+      // For div/span/p, check if it has only text content or has children with data-i18n
+      const hasI18nChildren = element.querySelector('[data-i18n]');
+      if (!hasI18nChildren) {
+        // No children with translations, safe to replace text content
+        element.textContent = translation;
+      }
     } else {
+      // Default: replace text content
       element.textContent = translation;
     }
   });
