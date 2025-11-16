@@ -254,6 +254,12 @@ const styles = {
 // Serve index.html
 app.get('/', (req, res) => {
   console.log('🌐 Serving index.html');
+  // Disable caching for index.html in development
+  if (process.env.NODE_ENV !== 'production') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
