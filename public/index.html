@@ -1646,6 +1646,19 @@
     <script>
       console.log('🚀 Script starting to load...');
       
+      // CRITICAL FIX: Ensure modals are direct children of body, not inside any hidden containers
+      (function() {
+        const modals = ['loginModal', 'signupModal', 'forgotPasswordModal'];
+        modals.forEach(modalId => {
+          const modal = document.getElementById(modalId);
+          if (modal && modal.parentElement && modal.parentElement.id === 'logoGenerator') {
+            console.warn(`⚠️ Modal ${modalId} is inside logoGenerator! Moving to body...`);
+            document.body.appendChild(modal);
+            console.log(`✅ Moved ${modalId} to body`);
+          }
+        });
+      })();
+      
       // Define global functions IMMEDIATELY so they're available for onclick handlers
       window.openLoginModal = function() {
         console.log('🔵 openLoginModal called');
