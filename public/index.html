@@ -1630,6 +1630,8 @@
     
     <!-- Inline JavaScript to avoid separate file request -->
     <script>
+      console.log('🚀 Script starting to load...');
+      
       // Define global functions IMMEDIATELY so they're available for onclick handlers
       window.openLoginModal = function() {
         console.log('🔵 openLoginModal called');
@@ -2532,6 +2534,8 @@
       });
 
       window.addEventListener('DOMContentLoaded', async () => {
+        console.log('📦 DOMContentLoaded fired!');
+        
         // Ensure homepage is visible and logo generator is hidden by default
         const homepage = document.getElementById('homepage');
         const logoGenerator = document.getElementById('logoGenerator');
