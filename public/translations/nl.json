@@ -170,5 +170,21 @@
   "service.subtitle": "Maak uw bedrijfslogo en begin met een digitaal playbook",
   
   "advertisement.label": "Advertentie",
-  "advertisement.placeholder": "Advertentieruimte gereserveerd voor gratis gebruikers"
+  "advertisement.placeholder": "Advertentieruimte gereserveerd voor gratis gebruikers",
+  
+  "form.suggestionsLabel": "Klik op een suggestie om deze te gebruiken:",
+  
+  "favicon.title": "Favicon Generator",
+  "favicon.subtitle": "Maak in seconden een professioneel favicon voor uw website",
+  "favicon.text": "Tekst (1-2 tekens)",
+  "favicon.textPlaceholder": "AB",
+  "favicon.textHint": "Voer 1-2 letters of tekens in voor uw favicon",
+  "favicon.generate": "Favicon genereren",
+  "favicon.section.design": "Ontwerp",
+  "favicon.preview.title": "Uw Favicons",
+  "favicon.instructions.title": "Hoe u uw favicons gebruikt",
+  "favicon.instructions.description": "Voeg deze bestanden toe aan de hoofdmap van uw website en voeg de volgende code toe aan uw HTML <head> sectie:",
+  "favicon.error.noText": "Voer 1-2 tekens in voor uw favicon",
+  "favicon.error.tooLong": "Favicon tekst moet maximaal 1-2 tekens lang zijn",
+  "favicon.error.generationFailed": "Kan favicon niet genereren. Probeer het opnieuw."
 }

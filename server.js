@@ -526,6 +526,134 @@ app.post(
   },
 );
 
+// Generate favicon (protected with abuse protection and authentication)
+app.post(
+  '/generate-favicon',
+  requireAuth,
+  abuseProtectionMiddleware,
+  [
+    body('text').isString().notEmpty().isLength({ min: 1, max: 2 }),
+    body('fontCategory').optional().isString().isIn(Object.keys(fontCategories)),
+    body('fontColor').matches(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
+    body('bgColor').matches(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/),
+    body('shape').optional().isString().isIn(['none', 'circle', 'square', 'rounded']),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+      const {
+        text,
+        fontCategory = 'modern',
+        fontColor,
+        bgColor,
+        shape = 'square',
+      } = req.body;
+
+      console.log(`🎯 Favicon Generation Request:
+   ➡ Text: ${text}
+   ➡ Font Category: ${fontCategory}
+   ➡ Shape: ${shape}
+   ➡ Font Color: ${fontColor}
+   ➡ Background Color: ${bgColor}`);
+
+      // --- Load font ---
+      const fontPath = getFontPath(fontCategory, false);
+      if (!fs.existsSync(fontPath)) {
+        console.error(`❌ Font not found at: ${fontPath}`);
+        return res.status(400).json({ error: 'Font not found' });
+      }
+
+      console.log(`✅ Font loaded: ${fontPath}`);
+      const textToSVG = TextToSVG.loadSync(fontPath);
+
+      // Favicon sizes (standard sizes)
+      const sizes = [
+        { size: 16, name: 'favicon-16x16' },
+        { size: 32, name: 'favicon-32x32' },
+        { size: 48, name: 'favicon-48x48' },
+        { size: 180, name: 'apple-touch-icon' },
+        { size: 192, name: 'android-chrome-192x192' },
+        { size: 512, name: 'android-chrome-512x512' },
+      ];
+
+      const safeName = `favicon-${text.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}`;
+      const generatedFiles = {};
+
+      // Generate each size
+      for (const { size, name } of sizes) {
+        const fontSize = Math.floor(size * 0.6); // Text takes 60% of the size
+        const metrics = textToSVG.getMetrics(text, { fontSize });
+        
+        // Center the text
+        const textX = size / 2;
+        const textY = size / 2;
+
+        // Generate text path
+        const textPath = textToSVG.getPath(text, {
+          x: textX,
+          y: textY,
+          fontSize: fontSize,
+          anchor: 'center middle',
+          attributes: { fill: fontColor },
+        });
+
+        // Generate shape background
+        const shapeSvg = generateShape(shape, size, size, bgColor);
+
+        // Build SVG
+        const svg = `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+          ${shapeSvg}
+          ${textPath}
+        </svg>
+      `;
+
+        // Save SVG
+        const svgPathFile = path.join(outputDir, `${safeName}-${name}.svg`);
+        fs.writeFileSync(svgPathFile, svg);
+        console.log(`💾 SVG saved: ${svgPathFile}`);
+
+        // Generate PNG
+        const svgBuffer = Buffer.from(svg);
+        const pngPathFile = path.join(outputDir, `${safeName}-${name}.png`);
+        
+        if (shape === 'none') {
+          await sharp(svgBuffer)
+            .resize(size, size)
+            .png({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .toFile(pngPathFile);
+        } else {
+          await sharp(svgBuffer)
+            .resize(size, size)
+            .png()
+            .toFile(pngPathFile);
+        }
+        console.log(`💾 PNG saved: ${pngPathFile}`);
+
+        generatedFiles[name] = {
+          svg: `/generated_img/${safeName}-${name}.svg`,
+          png: `/generated_img/${safeName}-${name}.png`,
+        };
+      }
+
+      // Log usage
+      await logUsage(req, '/generate-favicon');
+
+      // --- Return paths to client ---
+      res.json({
+        files: generatedFiles,
+        usageLimits: req.usageLimits,
+      });
+    } catch (err) {
+      console.error('❌ Error generating favicon:', err);
+      res.status(500).json({ error: 'Favicon generation failed', details: err.message });
+    }
+  },
+);
+
 // Get usage limits endpoint
 app.get('/api/usage-limits', requireAuth, async (req, res) => {
   try {

@@ -170,5 +170,21 @@
   "service.subtitle": "Skapa din företagslogotyp och kom igång med en digital playbook",
   
   "advertisement.label": "Reklam",
-  "advertisement.placeholder": "Reklamutrymme reserverat för gratis användare"
+  "advertisement.placeholder": "Reklamutrymme reserverat för gratis användare",
+  
+  "form.suggestionsLabel": "Klicka på ett förslag för att använda det:",
+  
+  "favicon.title": "Favicon Generator",
+  "favicon.subtitle": "Skapa en professionell favicon för din webbplats på sekunder",
+  "favicon.text": "Text (1-2 tecken)",
+  "favicon.textPlaceholder": "AB",
+  "favicon.textHint": "Ange 1-2 bokstäver eller tecken för din favicon",
+  "favicon.generate": "Generera favicon",
+  "favicon.section.design": "Design",
+  "favicon.preview.title": "Dina favicons",
+  "favicon.instructions.title": "Hur du använder dina favicons",
+  "favicon.instructions.description": "Lägg till dessa filer i din webbplats rotmapp och inkludera följande kod i din HTML <head> sektion:",
+  "favicon.error.noText": "Ange 1-2 tecken för din favicon",
+  "favicon.error.tooLong": "Favicon text måste vara maximalt 1-2 tecken",
+  "favicon.error.generationFailed": "Kunde inte generera favicon. Försök igen."
 }

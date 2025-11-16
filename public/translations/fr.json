@@ -170,5 +170,21 @@
   "service.subtitle": "Créez le logo de votre entreprise et commencez avec un playbook numérique",
   
   "advertisement.label": "Publicité",
-  "advertisement.placeholder": "Espace publicitaire réservé aux utilisateurs gratuits"
+  "advertisement.placeholder": "Espace publicitaire réservé aux utilisateurs gratuits",
+  
+  "form.suggestionsLabel": "Cliquez sur une suggestion pour l'utiliser :",
+  
+  "favicon.title": "Générateur de Favicon",
+  "favicon.subtitle": "Créez un favicon professionnel pour votre site web en quelques secondes",
+  "favicon.text": "Texte (1-2 caractères)",
+  "favicon.textPlaceholder": "AB",
+  "favicon.textHint": "Entrez 1-2 lettres ou caractères pour votre favicon",
+  "favicon.generate": "Générer le Favicon",
+  "favicon.section.design": "Design",
+  "favicon.preview.title": "Vos Favicons",
+  "favicon.instructions.title": "Comment utiliser vos favicons",
+  "favicon.instructions.description": "Ajoutez ces fichiers au répertoire racine de votre site web et incluez le code suivant dans la section <head> de votre HTML :",
+  "favicon.error.noText": "Veuillez entrer 1-2 caractères pour votre favicon",
+  "favicon.error.tooLong": "Le texte du favicon doit contenir au maximum 1-2 caractères",
+  "favicon.error.generationFailed": "Impossible de générer le favicon. Veuillez réessayer."
 }

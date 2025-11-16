@@ -1104,6 +1104,77 @@
       </div>
     </div>
 
+    <!-- Favicon Generator Section -->
+    <div class="container" style="margin-top: 48px;">
+      <div class="card form-card">
+        <div>
+          <h1 style="font-size: 24px; margin-bottom: 8px;" data-i18n="favicon.title">Favicon Generator</h1>
+          <p class="subtitle" style="margin-bottom: 24px;" data-i18n="favicon.subtitle">Create a professional favicon for your website in seconds</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="favicon.section.design">Design</div>
+          <div class="form-group">
+            <label for="faviconText" data-i18n="favicon.text">Text (1-2 characters)</label>
+            <input id="faviconText" type="text" maxlength="2" placeholder="AB" style="text-transform: uppercase;" data-i18n="favicon.textPlaceholder" />
+            <div class="field-hint" data-i18n="favicon.textHint">Enter 1-2 letters or characters for your favicon</div>
+          </div>
+          <div class="form-group">
+            <label for="faviconFontCategory" data-i18n="form.fontCategory">Font Category</label>
+            <select id="faviconFontCategory">
+              <option value="modern" data-i18n="option.fontCategory.modern">Modern</option>
+              <option value="serif" data-i18n="option.fontCategory.serif">Serif</option>
+              <option value="handwritten" data-i18n="option.fontCategory.handwritten">Handwritten</option>
+              <option value="bold" data-i18n="option.fontCategory.bold">Bold / Strong</option>
+              <option value="elegant" data-i18n="option.fontCategory.elegant">Elegant</option>
+              <option value="retro" data-i18n="option.fontCategory.retro">Retro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="faviconShape" data-i18n="form.shape">Shape</label>
+            <select id="faviconShape">
+              <option value="square" data-i18n="option.shape.square">Square</option>
+              <option value="circle" data-i18n="option.shape.circle">Circle</option>
+              <option value="rounded" data-i18n="option.shape.rounded">Rounded Rectangle</option>
+              <option value="none" data-i18n="option.shape.none">No Shape (Transparent)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="section.shapeColors">Colors</div>
+          <div id="faviconColorPickers" class="form-group">
+            <div class="color-group">
+              <div class="color-input-wrapper">
+                <label for="faviconFontColor" data-i18n="form.fontColor">Font Color</label>
+                <input id="faviconFontColor" type="color" value="#ffffff" />
+              </div>
+              <div class="color-input-wrapper">
+                <label for="faviconBgColor" data-i18n="form.background">Background</label>
+                <input id="faviconBgColor" type="color" value="#10a37f" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="generateFaviconBtn" data-i18n="favicon.generate">Generate Favicon</button>
+
+        <div class="section" id="faviconPreviewSection" style="display: none; margin-top: 32px; padding-top: 32px; border-top: 1px solid #2a2a2a;">
+          <div class="section-title" data-i18n="favicon.preview.title">Your Favicons</div>
+          <div id="faviconPreview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+            <!-- Favicon previews will be inserted here -->
+          </div>
+          <div style="margin-top: 24px; padding: 16px; background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 8px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #ececec;" data-i18n="favicon.instructions.title">How to Use Your Favicons</h4>
+            <p style="font-size: 13px; color: #8e8e93; line-height: 1.6; margin-bottom: 12px;" data-i18n="favicon.instructions.description">
+              Add these files to your website's root directory and include the following code in your HTML &lt;head&gt; section:
+            </p>
+            <pre id="faviconHtmlCode" style="background: #0d0d0d; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; color: #10a37f; font-family: 'Courier New', monospace; margin: 0;"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Login Modal -->
     <div class="modal" id="loginModal">
       <div class="modal-content">
@@ -1634,6 +1705,119 @@
       btn.addEventListener('click', () => {
         console.log('🔘 Generate button clicked');
         generateLogo();
+      });
+
+      // Favicon generation
+      const faviconTextInput = document.getElementById('faviconText');
+      const faviconFontCategorySelect = document.getElementById('faviconFontCategory');
+      const faviconShapeSelect = document.getElementById('faviconShape');
+      const faviconFontColorInput = document.getElementById('faviconFontColor');
+      const faviconBgColorInput = document.getElementById('faviconBgColor');
+      const generateFaviconBtn = document.getElementById('generateFaviconBtn');
+      const faviconPreviewSection = document.getElementById('faviconPreviewSection');
+      const faviconPreview = document.getElementById('faviconPreview');
+      const faviconHtmlCode = document.getElementById('faviconHtmlCode');
+
+      async function generateFavicon() {
+        const text = faviconTextInput.value.trim().toUpperCase();
+        const fontCategory = faviconFontCategorySelect.value.toLowerCase();
+        const shape = faviconShapeSelect.value.toLowerCase();
+        const fontColor = faviconFontColorInput.value;
+        const bgColor = faviconBgColorInput.value;
+
+        if (!text || text.length === 0) {
+          alert(window.i18n.t('favicon.error.noText'));
+          return;
+        }
+
+        if (text.length > 2) {
+          alert(window.i18n.t('favicon.error.tooLong'));
+          return;
+        }
+
+        generateFaviconBtn.disabled = true;
+        generateFaviconBtn.textContent = window.i18n.t('form.generating');
+        faviconPreviewSection.style.display = 'none';
+
+        const payload = {
+          text,
+          fontCategory,
+          shape,
+          fontColor,
+          bgColor,
+        };
+
+        console.log('🛰️ Sending generate-favicon:', payload);
+
+        try {
+          const res = await fetch('/generate-favicon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include',
+          });
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(errorText);
+          }
+          const { files } = await res.json();
+
+          console.log('✅ Favicon files:', files);
+
+          // Display all favicon sizes
+          const faviconSizes = [
+            { key: 'favicon-16x16', label: '16×16', desc: 'Standard favicon' },
+            { key: 'favicon-32x32', label: '32×32', desc: 'Standard favicon' },
+            { key: 'favicon-48x48', label: '48×48', desc: 'Standard favicon' },
+            { key: 'apple-touch-icon', label: '180×180', desc: 'Apple touch icon' },
+            { key: 'android-chrome-192x192', label: '192×192', desc: 'Android Chrome' },
+            { key: 'android-chrome-512x512', label: '512×512', desc: 'Android Chrome' },
+          ];
+
+          faviconPreview.innerHTML = faviconSizes
+            .filter(size => files[size.key])
+            .map(size => {
+              const file = files[size.key];
+              return `
+                <div style="background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="margin-bottom: 12px;">
+                    <img src="${file.png}" alt="${size.label}" style="width: 64px; height: 64px; image-rendering: pixelated; border: 1px solid #2a2a2a; border-radius: 4px;" />
+                  </div>
+                  <div style="font-size: 13px; font-weight: 600; color: #ececec; margin-bottom: 4px;">${size.label}</div>
+                  <div style="font-size: 11px; color: #8e8e93; margin-bottom: 12px;">${size.desc}</div>
+                  <div style="display: flex; gap: 8px; justify-content: center;">
+                    <a href="${file.png}" download="${size.key}.png" style="padding: 6px 12px; background: #10a37f; color: #fff; border-radius: 4px; font-size: 12px; text-decoration: none;">PNG</a>
+                    <a href="${file.svg}" download="${size.key}.svg" style="padding: 6px 12px; background: #1f1f1f; border: 1px solid #2a2a2a; color: #ececec; border-radius: 4px; font-size: 12px; text-decoration: none;">SVG</a>
+                  </div>
+                </div>
+              `;
+            })
+            .join('');
+
+          // Generate HTML code for favicon implementation
+          const baseUrl = window.location.origin;
+          const htmlCode = `<!-- Favicon -->
+<link rel="icon" type="image/png" sizes="16x16" href="${baseUrl}${files['favicon-16x16']?.png || ''}">
+<link rel="icon" type="image/png" sizes="32x32" href="${baseUrl}${files['favicon-32x32']?.png || ''}">
+<link rel="icon" type="image/png" sizes="48x48" href="${baseUrl}${files['favicon-48x48']?.png || ''}">
+<link rel="apple-touch-icon" sizes="180x180" href="${baseUrl}${files['apple-touch-icon']?.png || ''}">
+<link rel="icon" type="image/png" sizes="192x192" href="${baseUrl}${files['android-chrome-192x192']?.png || ''}">
+<link rel="icon" type="image/png" sizes="512x512" href="${baseUrl}${files['android-chrome-512x512']?.png || ''}">`;
+
+          faviconHtmlCode.textContent = htmlCode;
+          faviconPreviewSection.style.display = 'block';
+        } catch (err) {
+          console.error('❌ Favicon generation error:', err);
+          alert(window.i18n.t('favicon.error.generationFailed'));
+        } finally {
+          generateFaviconBtn.disabled = false;
+          generateFaviconBtn.textContent = window.i18n.t('favicon.generate');
+        }
+      }
+
+      generateFaviconBtn.addEventListener('click', () => {
+        console.log('🔘 Generate favicon button clicked');
+        generateFavicon();
       });
 
       window.addEventListener('DOMContentLoaded', async () => {

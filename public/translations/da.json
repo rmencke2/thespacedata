@@ -170,5 +170,21 @@
   "service.subtitle": "Opret dit virksomhedslogo og kom i gang med en digital playbook",
   
   "advertisement.label": "Reklame",
-  "advertisement.placeholder": "Reklameplads reserveret til gratis brugere"
+  "advertisement.placeholder": "Reklameplads reserveret til gratis brugere",
+  
+  "form.suggestionsLabel": "Klik på et forslag for at bruge det:",
+  
+  "favicon.title": "Favicon Generator",
+  "favicon.subtitle": "Opret et professionelt favicon til din hjemmeside på få sekunder",
+  "favicon.text": "Tekst (1-2 tegn)",
+  "favicon.textPlaceholder": "AB",
+  "favicon.textHint": "Indtast 1-2 bogstaver eller tegn til dit favicon",
+  "favicon.generate": "Generer favicon",
+  "favicon.section.design": "Design",
+  "favicon.preview.title": "Dine favicons",
+  "favicon.instructions.title": "Sådan bruger du dine favicons",
+  "favicon.instructions.description": "Tilføj disse filer til din hjemmesides rodmappe og inkluder følgende kode i din HTML <head> sektion:",
+  "favicon.error.noText": "Indtast venligst 1-2 tegn til dit favicon",
+  "favicon.error.tooLong": "Favicon tekst skal være maksimalt 1-2 tegn",
+  "favicon.error.generationFailed": "Kunne ikke generere favicon. Prøv venligst igen."
 }

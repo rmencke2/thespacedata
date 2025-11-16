@@ -170,5 +170,21 @@
   "service.subtitle": "Erstellen Sie Ihr Firmenlogo und starten Sie mit einem digitalen Playbook",
   
   "advertisement.label": "Werbung",
-  "advertisement.placeholder": "Werbeplatz für kostenlose Nutzer reserviert"
+  "advertisement.placeholder": "Werbeplatz für kostenlose Nutzer reserviert",
+  
+  "form.suggestionsLabel": "Klicken Sie auf einen Vorschlag, um ihn zu verwenden:",
+  
+  "favicon.title": "Favicon Generator",
+  "favicon.subtitle": "Erstellen Sie in Sekunden ein professionelles Favicon für Ihre Website",
+  "favicon.text": "Text (1-2 Zeichen)",
+  "favicon.textPlaceholder": "AB",
+  "favicon.textHint": "Geben Sie 1-2 Buchstaben oder Zeichen für Ihr Favicon ein",
+  "favicon.generate": "Favicon erstellen",
+  "favicon.section.design": "Design",
+  "favicon.preview.title": "Ihre Favicons",
+  "favicon.instructions.title": "So verwenden Sie Ihre Favicons",
+  "favicon.instructions.description": "Fügen Sie diese Dateien zum Stammverzeichnis Ihrer Website hinzu und fügen Sie den folgenden Code in Ihren HTML <head> Abschnitt ein:",
+  "favicon.error.noText": "Bitte geben Sie 1-2 Zeichen für Ihr Favicon ein",
+  "favicon.error.tooLong": "Favicon-Text muss maximal 1-2 Zeichen lang sein",
+  "favicon.error.generationFailed": "Favicon konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
 }
