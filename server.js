@@ -39,32 +39,41 @@ app.use(
 );
 const rateLimit = require('express-rate-limit');
 
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => {
-      // Skip rate limiting for specific user
-      // Check if user is authenticated and email contains "rasmusmencke"
+// Create rate limiter with bypass for specific user
+const globalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: async (req) => {
+    // Skip rate limiting for user with email containing "rasmusmencke"
+    try {
+      // Check Passport authenticated user
       if (req.isAuthenticated && req.isAuthenticated() && req.user) {
         const email = req.user.email || '';
         if (email.toLowerCase().includes('rasmusmencke')) {
           return true; // Skip rate limiting
         }
       }
-      // Also check session-based auth
+      
+      // Check session-based auth (for local auth)
       if (req.session && req.session.userId) {
-        // We'll need to check the email from the database
-        // For now, we'll allow it if there's a session
-        // This is a simple bypass - you may want to check the actual email
-        return false; // Don't skip for session-based (we'll check email below)
+        const db = await getDatabase();
+        const user = await db.getUserById(req.session.userId);
+        if (user && user.email && user.email.toLowerCase().includes('rasmusmencke')) {
+          return true; // Skip rate limiting
+        }
       }
-      return false; // Don't skip for others
-    },
-  }),
-);
+    } catch (err) {
+      // On error, don't skip (fail safe)
+      console.error('Error checking rate limit bypass:', err);
+    }
+    
+    return false; // Don't skip for others
+  },
+});
+
+app.use(globalRateLimiter);
 
 const PORT = process.env.PORT || 4000;
 
