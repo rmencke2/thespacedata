@@ -1094,7 +1094,7 @@
             </div>
 
             <!-- AVI to MP4 Converter Card -->
-            <div class="tool-card" id="aviToMp4Card" data-tool-card="true">
+            <a href="/video-converter" class="tool-card" id="aviToMp4Card" data-tool-card="true" style="text-decoration: none; color: inherit;">
               <div class="tool-card-image">
                 <div style="padding: 24px; background: #1f1f1f; border-radius: 8px; min-height: 200px; display: flex; align-items: center; justify-content: center;">
                   <div style="text-align: center;">
@@ -1105,7 +1105,7 @@
               </div>
               <h3 style="font-size: 22px; font-weight: 600; margin: 24px 0 12px; color: #fff;">AVI to MP4 Converter</h3>
               <p style="color: #8e8e93; font-size: 15px; line-height: 1.6;">Convert your AVI videos to MP4 format quickly and easily.</p>
-            </div>
+            </a>
 
           </div>
 
@@ -2929,23 +2929,9 @@
             e.preventDefault();
             e.stopPropagation();
             
-            // Special handling for AVI to MP4 converter
-            if (card.id === 'aviToMp4Card') {
-              if (!currentUser) {
-                window.showAuthGate();
-                return;
-              }
-              // Hide homepage and logo generator, show converter
-              const homepage = document.getElementById('homepage');
-              const logoGenerator = document.getElementById('logoGenerator');
-              const aviToMp4Section = document.getElementById('aviToMp4Section');
-              if (homepage) homepage.style.display = 'none';
-              if (logoGenerator) logoGenerator.style.display = 'none';
-              if (aviToMp4Section) {
-                aviToMp4Section.style.display = 'block';
-                // Scroll to converter
-                aviToMp4Section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
+            // Special handling for AVI to MP4 converter - navigate to dedicated page
+            if (card.id === 'aviToMp4Card' || card.closest('#aviToMp4Card')) {
+              window.location.href = '/video-converter';
               return;
             }
             

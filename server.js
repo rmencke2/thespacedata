@@ -300,6 +300,11 @@ app.get('/cookie', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cookie.html'));
 });
 
+// Serve video converter page
+app.get('/video-converter', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'video-converter.html'));
+});
+
 // Health check endpoint for service monitoring
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
