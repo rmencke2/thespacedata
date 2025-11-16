@@ -1700,6 +1700,28 @@
         }
         // Force a reflow to ensure styles are applied
         void modal.offsetHeight;
+        
+        // Additional visibility checks
+        const rect = modal.getBoundingClientRect();
+        console.log('Modal bounding rect:', {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width > 0 && rect.height > 0
+        });
+        
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+          const contentRect = content.getBoundingClientRect();
+          console.log('Modal content bounding rect:', {
+            top: contentRect.top,
+            left: contentRect.left,
+            width: contentRect.width,
+            height: contentRect.height
+          });
+          console.log('Modal content computed display:', window.getComputedStyle(content).display);
+        }
       };
 
       window.closeSignupModal = function() {
