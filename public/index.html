@@ -808,12 +808,14 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.7);
-        z-index: 2000;
+        z-index: 20000;
         align-items: center;
         justify-content: center;
+        pointer-events: none;
       }
       .modal.active {
         display: flex;
+        pointer-events: auto;
       }
       .modal-content {
         background: #171717;
@@ -1636,6 +1638,9 @@
         }
         console.log('✅ Opening login modal');
         modal.classList.add('active');
+        console.log('Modal classes:', modal.className);
+        console.log('Modal computed display:', window.getComputedStyle(modal).display);
+        console.log('Modal z-index:', window.getComputedStyle(modal).zIndex);
         const errorDiv = document.getElementById('loginError');
         if (errorDiv) errorDiv.innerHTML = '';
         if (typeof window.closeAuthGate === 'function') {
@@ -1661,6 +1666,9 @@
         }
         console.log('✅ Opening signup modal');
         modal.classList.add('active');
+        console.log('Modal classes:', modal.className);
+        console.log('Modal computed display:', window.getComputedStyle(modal).display);
+        console.log('Modal z-index:', window.getComputedStyle(modal).zIndex);
         const errorDiv = document.getElementById('signupError');
         if (errorDiv) errorDiv.innerHTML = '';
         if (typeof window.closeAuthGate === 'function') {
