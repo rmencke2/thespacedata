@@ -201,6 +201,30 @@ const upload = multer({
   },
 });
 
+// --- Configure multer for video to GIF conversion (accepts multiple video formats) ---
+const uploadVideo = multer({
+  dest: videoOutputDir,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept common video formats
+    const videoMimeTypes = [
+      'video/mp4', 'video/x-msvideo', 'video/quicktime', 'video/x-ms-wmv',
+      'video/webm', 'video/x-matroska', 'video/3gpp', 'video/x-flv'
+    ];
+    const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.webm', '.mkv', '.3gp', '.flv'];
+    const hasValidMimeType = videoMimeTypes.includes(file.mimetype);
+    const hasValidExtension = videoExtensions.some(ext => file.originalname.toLowerCase().endsWith(ext));
+    
+    if (hasValidMimeType || hasValidExtension) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed (MP4, AVI, MOV, WebM, etc.)'), false);
+    }
+  },
+});
+
 // --- Font category mapping ---
 const fontCategories = {
   modern: {
@@ -303,6 +327,11 @@ app.get('/cookie', (req, res) => {
 // Serve video converter page
 app.get('/video-converter', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'video-converter.html'));
+});
+
+// Serve video to GIF converter page
+app.get('/video-to-gif', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'video-to-gif.html'));
 });
 
 // Health check endpoint for service monitoring
@@ -857,6 +886,90 @@ app.post(
 
       res.status(500).json({ 
         error: 'Video conversion failed', 
+        details: err.message 
+      });
+    }
+  },
+);
+
+// Convert video to animated GIF (protected with abuse protection and authentication)
+app.post(
+  '/convert-video-to-gif',
+  requireAuth,
+  abuseProtectionMiddleware,
+  uploadVideo.single('video'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const inputPath = req.file.path;
+    const outputFileName = `${req.file.filename}-${Date.now()}.gif`;
+    const outputPath = path.join(videoOutputDir, outputFileName);
+
+    console.log(`🎬 Converting Video to GIF:
+   ➡ Input: ${inputPath}
+   ➡ Output: ${outputPath}
+   ➡ File size: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
+
+    try {
+      // Convert using FFmpeg
+      // We'll limit the GIF to reasonable dimensions and optimize it
+      await new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+          .output(outputPath)
+          .outputOptions([
+            '-vf', 'fps=10,scale=800:-1:flags=lanczos', // 10 fps, max width 800px, maintain aspect ratio
+            '-loop', '0', // Loop forever
+          ])
+          .format('gif')
+          .on('start', (commandLine) => {
+            console.log('🔄 FFmpeg command:', commandLine);
+          })
+          .on('progress', (progress) => {
+            console.log(`⏳ Processing: ${Math.round(progress.percent || 0)}%`);
+          })
+          .on('end', () => {
+            console.log('✅ Conversion completed');
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error('❌ FFmpeg error:', err);
+            reject(err);
+          })
+          .run();
+      });
+
+      // Clean up input file
+      try {
+        fs.unlinkSync(inputPath);
+        console.log('🗑️  Cleaned up input file');
+      } catch (cleanupErr) {
+        console.warn('⚠️  Could not delete input file:', cleanupErr);
+      }
+
+      // Log usage
+      await logUsage(req, '/convert-video-to-gif');
+
+      // Return download URL
+      res.json({
+        downloadUrl: `/generated_video/${outputFileName}`,
+        filename: outputFileName,
+        usageLimits: req.usageLimits,
+      });
+    } catch (err) {
+      console.error('❌ Error converting video to GIF:', err);
+      
+      // Clean up files on error
+      try {
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      } catch (cleanupErr) {
+        console.warn('⚠️  Error during cleanup:', cleanupErr);
+      }
+
+      res.status(500).json({ 
+        error: 'GIF conversion failed', 
         details: err.message 
       });
     }
