@@ -198,8 +198,8 @@ const fontCategories = {
     bold: 'Montserrat/static/Montserrat-ExtraBold.ttf',
   },
   elegant: {
-    regular: 'Poppins/static/Poppins-Regular.ttf',
-    bold: 'Poppins/static/Poppins-Medium.ttf',
+    regular: 'Poppins/Poppins-Regular.ttf',
+    bold: 'Poppins/Poppins-Medium.ttf',
   },
   retro: {
     regular: 'Bitcount_Prop_Single/static/BitcountPropSingle-Regular.ttf',

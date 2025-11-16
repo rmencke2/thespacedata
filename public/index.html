@@ -3118,28 +3118,48 @@
     <!-- Footer -->
     <div id="footer-container"></div>
     <script>
-      // Load footer
-      fetch('/footer.html')
-        .then(response => response.text())
-        .then(html => {
-          document.getElementById('footer-container').innerHTML = html;
-          // Sync footer language selector
-          const mainSelector = document.getElementById('languageSelector');
-          const footerSelector = document.getElementById('footerLanguageSelector');
-          if (mainSelector && footerSelector) {
-            footerSelector.value = mainSelector.value || window.i18n?.getCurrentLanguage() || 'en';
-            mainSelector.addEventListener('change', () => {
-              footerSelector.value = mainSelector.value;
-            });
-            footerSelector.addEventListener('change', () => {
-              mainSelector.value = footerSelector.value;
-              if (typeof window.i18n !== 'undefined') {
-                window.i18n.setLanguage(footerSelector.value);
-              }
-            });
-          }
-        })
-        .catch(err => console.error('Error loading footer:', err));
+      // Load footer - ensure it loads after DOM is ready
+      function loadFooter() {
+        const footerContainer = document.getElementById('footer-container');
+        if (!footerContainer) {
+          console.error('Footer container not found');
+          return;
+        }
+        fetch('/footer.html')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+          })
+          .then(html => {
+            footerContainer.innerHTML = html;
+            // Sync footer language selector
+            const mainSelector = document.getElementById('languageSelector');
+            const footerSelector = document.getElementById('footerLanguageSelector');
+            if (mainSelector && footerSelector) {
+              footerSelector.value = mainSelector.value || (window.i18n?.getCurrentLanguage && window.i18n.getCurrentLanguage()) || 'en';
+              mainSelector.addEventListener('change', () => {
+                footerSelector.value = mainSelector.value;
+              });
+              footerSelector.addEventListener('change', () => {
+                mainSelector.value = footerSelector.value;
+                if (typeof window.i18n !== 'undefined' && window.i18n.setLanguage) {
+                  window.i18n.setLanguage(footerSelector.value);
+                }
+              });
+            }
+          })
+          .catch(err => console.error('Error loading footer:', err));
+      }
+      
+      // Load footer when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadFooter);
+      } else {
+        // DOM is already ready
+        loadFooter();
+      }
     </script>
   </body>
 </html>
