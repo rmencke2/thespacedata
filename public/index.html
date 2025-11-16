@@ -2491,38 +2491,66 @@
         }
       }
 
-      // Modal functions
-      function openLoginModal() {
-        document.getElementById('loginModal').classList.add('active');
-        document.getElementById('loginError').innerHTML = '';
+      // Modal functions - make sure they're globally accessible
+      window.openLoginModal = function() {
+        const modal = document.getElementById('loginModal');
+        if (!modal) {
+          console.error('Login modal not found');
+          return;
+        }
+        modal.classList.add('active');
+        const errorDiv = document.getElementById('loginError');
+        if (errorDiv) errorDiv.innerHTML = '';
         closeAuthGate();
-      }
+      };
 
-      function closeLoginModal() {
-        document.getElementById('loginModal').classList.remove('active');
-        document.getElementById('loginForm').reset();
-      }
+      window.closeLoginModal = function() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('loginForm');
+          if (form) form.reset();
+        }
+      };
 
-      function openSignupModal() {
-        document.getElementById('signupModal').classList.add('active');
-        document.getElementById('signupError').innerHTML = '';
+      window.openSignupModal = function() {
+        const modal = document.getElementById('signupModal');
+        if (!modal) {
+          console.error('Signup modal not found');
+          return;
+        }
+        modal.classList.add('active');
+        const errorDiv = document.getElementById('signupError');
+        if (errorDiv) errorDiv.innerHTML = '';
         closeAuthGate();
-      }
+      };
 
-      function closeSignupModal() {
-        document.getElementById('signupModal').classList.remove('active');
-        document.getElementById('signupForm').reset();
-      }
+      window.closeSignupModal = function() {
+        const modal = document.getElementById('signupModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('signupForm');
+          if (form) form.reset();
+        }
+      };
 
-      function openForgotPasswordModal() {
-        document.getElementById('forgotPasswordModal').classList.add('active');
-        document.getElementById('forgotPasswordError').innerHTML = '';
-      }
+      window.openForgotPasswordModal = function() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.classList.add('active');
+          const errorDiv = document.getElementById('forgotPasswordError');
+          if (errorDiv) errorDiv.innerHTML = '';
+        }
+      };
 
-      function closeForgotPasswordModal() {
-        document.getElementById('forgotPasswordModal').classList.remove('active');
-        document.getElementById('forgotPasswordForm').reset();
-      }
+      window.closeForgotPasswordModal = function() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('forgotPasswordForm');
+          if (form) form.reset();
+        }
+      };
 
       // Close modals on outside click
       document.querySelectorAll('.modal').forEach(modal => {
