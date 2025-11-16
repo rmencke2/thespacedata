@@ -343,6 +343,28 @@
       .homepage {
         min-height: 100vh;
       }
+      .hero-gradient {
+        background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #0d0d0d 100%);
+        position: relative;
+        overflow: hidden;
+      }
+      .hero-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 30% 20%, rgba(16, 163, 127, 0.15) 0%, transparent 50%);
+        pointer-events: none;
+      }
+      .hero-gradient > div {
+        position: relative;
+        z-index: 1;
+      }
+      .hero-cta {
+        box-shadow: 0 4px 20px rgba(16, 163, 127, 0.3);
+      }
       .features-section {
         background: #171717;
         border-top: 1px solid #2a2a2a;
@@ -907,15 +929,23 @@
 
     <!-- Homepage / Landing Page -->
     <div id="homepage" class="homepage">
-      <div class="hero">
-        <h1 data-i18n="homepage.hero.title">Create Your Professional Logo in Minutes</h1>
-        <p class="subtitle" data-i18n="homepage.hero.subtitle">No design skills needed — perfect for cafés, freelancers, artisans, and new small businesses</p>
-        <p class="hero-tagline" data-i18n="homepage.hero.features">✓ Professional quality ✓ Full usage rights ✓ Multiple formats</p>
-        <div class="sample-logos">
-          <div class="sample-logo" style="background: #FFF8DC; color: #8B4513;">Sweet Dreams<br>Bakery</div>
-          <div class="sample-logo" style="background: #E0F2FE; color: #1E3A8A;">Flow Masters<br>Plumbing</div>
-          <div class="sample-logo" style="background: #EFEBE9; color: #5D4037;">Green Thumb<br>Landscaping</div>
-          <div class="sample-logo" style="background: #F8BBD0; color: #6A5ACD;">Fit Zone<br>Fitness</div>
+      <div class="hero hero-gradient">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 80px 20px 60px;">
+          <h1 style="font-size: 48px; font-weight: 700; margin-bottom: 24px; background: linear-gradient(135deg, #fff 0%, #10a37f 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2;" data-i18n="homepage.hero.title">Start Building Your Business Today</h1>
+          <p class="subtitle" style="font-size: 20px; max-width: 700px; margin: 0 auto 32px;" data-i18n="homepage.hero.subtitle">Create professional logos and brand assets in minutes. No design skills needed — perfect for launching your dream business.</p>
+          <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 48px; flex-wrap: wrap;">
+            <button class="cta-button primary hero-cta" onclick="openSignupModal()" style="font-size: 18px; padding: 16px 40px;" data-i18n="homepage.cta.signup">Get Started Free</button>
+            <button class="cta-button secondary hero-cta" onclick="document.getElementById('homepage').querySelector('.features-section').scrollIntoView({ behavior: 'smooth' });" style="font-size: 18px; padding: 16px 40px;" data-i18n="homepage.hero.learnMore">See How It Works</button>
+          </div>
+          <p class="hero-tagline" style="font-size: 16px; margin-bottom: 40px;" data-i18n="homepage.hero.features">✓ Professional quality ✓ Full usage rights ✓ Multiple formats ✓ Free forever plan</p>
+          <div class="sample-logos" style="margin-top: 60px;">
+            <div class="sample-logo" style="background: #FFF8DC; color: #8B4513;">Sweet Dreams<br>Bakery</div>
+            <div class="sample-logo" style="background: #E0F2FE; color: #1E3A8A;">Flow Masters<br>Plumbing</div>
+            <div class="sample-logo" style="background: #EFEBE9; color: #5D4037;">Green Thumb<br>Landscaping</div>
+            <div class="sample-logo" style="background: #F8BBD0; color: #6A5ACD;">Fit Zone<br>Fitness</div>
+            <div class="sample-logo" style="background: #E8F5E9; color: #2E7D32;">Eco Clean<br>Services</div>
+            <div class="sample-logo" style="background: #FFF3E0; color: #E65100;">Artisan<br>Coffee</div>
+          </div>
         </div>
       </div>
 
@@ -958,15 +988,28 @@
             </div>
           </div>
 
+          <!-- Trust Signals -->
+          <div style="text-align: center; margin-bottom: 48px; padding: 40px 20px; background: #1f1f1f; border-radius: 12px; border: 1px solid #2a2a2a;">
+            <p style="color: #8e8e93; font-size: 14px; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px;" data-i18n="homepage.trust.title">Trusted by entrepreneurs worldwide</p>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 40px; flex-wrap: wrap; opacity: 0.7;">
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;">10K+</div>
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;" data-i18n="homepage.trust.logos">Logos Created</div>
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;">50+</div>
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;" data-i18n="homepage.trust.countries">Countries</div>
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;">4.8★</div>
+              <div style="color: #ececec; font-size: 24px; font-weight: 600;" data-i18n="homepage.trust.rating">Rating</div>
+            </div>
+          </div>
+
           <!-- CTA Section -->
           <div class="cta-section">
-            <h2 style="text-align: center; font-size: 28px; margin-bottom: 16px; color: #fff;" data-i18n="homepage.cta.title">Ready to Create Your Logo?</h2>
-            <p style="text-align: center; color: #8e8e93; margin-bottom: 32px; font-size: 18px;" data-i18n="homepage.cta.subtitle">Sign up free to get started — no credit card required</p>
+            <h2 style="text-align: center; font-size: 32px; margin-bottom: 16px; color: #fff; font-weight: 700;" data-i18n="homepage.cta.title">Ready to Build Your Brand?</h2>
+            <p style="text-align: center; color: rgba(255, 255, 255, 0.9); margin-bottom: 32px; font-size: 18px;" data-i18n="homepage.cta.subtitle">Join thousands of entrepreneurs creating professional brands — start free today</p>
             <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-              <button class="cta-button primary" onclick="openSignupModal()" data-i18n="homepage.cta.signup">Get Started Free</button>
-              <button class="cta-button secondary" onclick="openLoginModal()" data-i18n="homepage.cta.login">Already have an account?</button>
+              <button class="cta-button primary" onclick="openSignupModal()" style="font-size: 18px; padding: 16px 40px;" data-i18n="homepage.cta.signup">Get Started Free</button>
+              <button class="cta-button secondary" onclick="openLoginModal()" style="font-size: 18px; padding: 16px 40px;" data-i18n="homepage.cta.login">Already have an account?</button>
             </div>
-            <p style="text-align: center; color: #8e8e93; margin-top: 24px; font-size: 14px;" data-i18n="homepage.cta.trust">✓ Free forever plan available ✓ No credit card required ✓ Cancel anytime</p>
+            <p style="text-align: center; color: rgba(255, 255, 255, 0.8); margin-top: 24px; font-size: 14px;" data-i18n="homepage.cta.trust">✓ Free forever plan available ✓ No credit card required ✓ Cancel anytime</p>
           </div>
         </div>
       </div>
@@ -2324,7 +2367,12 @@
         // Force update translations after a short delay to ensure DOM is ready
         setTimeout(() => {
           window.i18n.updateTranslations();
-        }, 100);
+        }, 200);
+        
+        // Also update translations after auth check (homepage might be shown)
+        setTimeout(() => {
+          window.i18n.updateTranslations();
+        }, 500);
         
         // Update language selector to current language
         const langSelector = document.getElementById('languageSelector');
@@ -2386,6 +2434,8 @@
       function updateAuthUI(user) {
         const authButtons = document.getElementById('authButtons');
         const userInfo = document.getElementById('userInfo');
+        const homepage = document.getElementById('homepage');
+        const logoGenerator = document.getElementById('logoGenerator');
         
         if (user) {
           authButtons.style.display = 'none';
@@ -2401,15 +2451,27 @@
           if (langSelector) {
             langSelector.value = window.i18n.getCurrentLanguage();
           }
+          
+          // Show logo generator, hide homepage
+          if (homepage) homepage.style.display = 'none';
+          if (logoGenerator) logoGenerator.style.display = 'block';
+          
+          // Update translations for logo generator after it's shown
+          setTimeout(() => {
+            window.i18n.updateTranslations();
+          }, 100);
         } else {
           authButtons.style.display = 'flex';
           userInfo.style.display = 'none';
           
           // Show homepage, hide logo generator
-          const homepage = document.getElementById('homepage');
-          const logoGenerator = document.getElementById('logoGenerator');
           if (homepage) homepage.style.display = 'block';
           if (logoGenerator) logoGenerator.style.display = 'none';
+          
+          // Update translations for homepage after it's shown
+          setTimeout(() => {
+            window.i18n.updateTranslations();
+          }, 100);
         }
       }
 

@@ -128,15 +128,22 @@ async function setLanguage(lang) {
 
 // Update all translated elements on the page
 function updateTranslations() {
-  // Update elements with data-i18n attribute
+  // Update elements with data-i18n attribute (including hidden elements)
   document.querySelectorAll('[data-i18n]').forEach(element => {
     const key = element.getAttribute('data-i18n');
     const translation = t(key);
+    
+    // Skip if translation is the same as the key (translation not found)
+    if (translation === key && !key.startsWith('homepage.') && !key.startsWith('auth.')) {
+      return;
+    }
     
     if (element.tagName === 'INPUT' && element.type !== 'submit' && element.type !== 'button') {
       element.placeholder = translation;
     } else if (element.tagName === 'INPUT' && (element.type === 'submit' || element.type === 'button')) {
       element.value = translation;
+    } else if (element.tagName === 'BUTTON') {
+      element.textContent = translation;
     } else if (element.tagName === 'LABEL') {
       // For labels, update text but preserve structure (like tooltips and optional spans)
       const tooltip = element.querySelector('.tooltip');

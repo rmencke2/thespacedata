@@ -4,9 +4,15 @@
   "app.subtitle": "No design skills needed — perfect for cafés, freelancers, artisans, and new small businesses",
   "app.features": "✓ Professional quality ✓ Full usage rights ✓ Multiple formats",
   
-  "homepage.hero.title": "Create Your Professional Logo in Minutes",
-  "homepage.hero.subtitle": "No design skills needed — perfect for cafés, freelancers, artisans, and new small businesses",
-  "homepage.hero.features": "✓ Professional quality ✓ Full usage rights ✓ Multiple formats",
+  "homepage.hero.title": "Start Building Your Business Today",
+  "homepage.hero.subtitle": "Create professional logos and brand assets in minutes. No design skills needed — perfect for launching your dream business.",
+  "homepage.hero.features": "✓ Professional quality ✓ Full usage rights ✓ Multiple formats ✓ Free forever plan",
+  "homepage.hero.learnMore": "See How It Works",
+  
+  "homepage.trust.title": "Trusted by entrepreneurs worldwide",
+  "homepage.trust.logos": "Logos Created",
+  "homepage.trust.countries": "Countries",
+  "homepage.trust.rating": "Rating",
   
   "homepage.features.title": "Everything You Need to Get Started",
   "homepage.features.subtitle": "Professional logo design tools made simple",
@@ -23,8 +29,8 @@
   "homepage.features.fast.title": "Lightning Fast",
   "homepage.features.fast.description": "Generate your logo instantly — no waiting, no delays",
   
-  "homepage.cta.title": "Ready to Create Your Logo?",
-  "homepage.cta.subtitle": "Sign up free to get started — no credit card required",
+  "homepage.cta.title": "Ready to Build Your Brand?",
+  "homepage.cta.subtitle": "Join thousands of entrepreneurs creating professional brands — start free today",
   "homepage.cta.signup": "Get Started Free",
   "homepage.cta.login": "Already have an account?",
   "homepage.cta.trust": "✓ Free forever plan available ✓ No credit card required ✓ Cancel anytime",
