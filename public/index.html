@@ -1525,10 +1525,10 @@
         <h2 data-i18n="authGate.title">Sign Up to Get Started</h2>
         <p data-i18n="authGate.description">Create a free account to start generating professional logos and favicons for your business</p>
         <div class="auth-gate-buttons">
-          <button class="cta-button primary" onclick="openSignupModal(); closeAuthGate();" data-i18n="authGate.signup">Sign Up Free</button>
-          <button class="cta-button secondary" onclick="openLoginModal(); closeAuthGate();" data-i18n="authGate.login">Log In</button>
+          <button class="cta-button primary" onclick="if(typeof window.openSignupModal === 'function') { window.openSignupModal(); window.closeAuthGate(); }" data-i18n="authGate.signup">Sign Up Free</button>
+          <button class="cta-button secondary" onclick="if(typeof window.openLoginModal === 'function') { window.openLoginModal(); window.closeAuthGate(); }" data-i18n="authGate.login">Log In</button>
         </div>
-        <button onclick="closeAuthGate()" style="margin-top: 24px; background: none; border: none; color: #8e8e93; font-size: 14px; cursor: pointer; text-decoration: underline;" data-i18n="authGate.close">Maybe later</button>
+        <button onclick="if(typeof window.closeAuthGate === 'function') { window.closeAuthGate(); }" style="margin-top: 24px; background: none; border: none; color: #8e8e93; font-size: 14px; cursor: pointer; text-decoration: underline;" data-i18n="authGate.close">Maybe later</button>
       </div>
     </div>
 
@@ -1597,7 +1597,7 @@
           <button type="submit" class="auth-btn primary" style="width: 100%; margin-top: 8px;">Sign Up</button>
         </form>
         <div style="text-align: center; margin-top: 16px; font-size: 14px; color: #8e8e93;">
-          Already have an account? <a href="#" onclick="closeSignupModal(); openLoginModal();" style="color: #10a37f;">Log in</a>
+          Already have an account? <a href="#" onclick="if(typeof window.closeSignupModal === 'function' && typeof window.openLoginModal === 'function') { window.closeSignupModal(); window.openLoginModal(); }" style="color: #10a37f;">Log in</a>
         </div>
       </div>
     </div>
@@ -1606,7 +1606,7 @@
     <div class="modal" id="forgotPasswordModal">
       <div class="modal-content">
         <div class="modal-header">
-          <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
+          <button class="modal-close" onclick="if(typeof window.closeForgotPasswordModal === 'function') { window.closeForgotPasswordModal(); }">&times;</button>
           <h2 data-i18n="auth.resetPassword">Reset Password</h2>
           <p class="subtitle" data-i18n="auth.resetPasswordSubtitle">Enter your email to receive a reset link</p>
         </div>
@@ -1626,6 +1626,85 @@
     
     <!-- Inline JavaScript to avoid separate file request -->
     <script>
+      // Define global functions IMMEDIATELY so they're available for onclick handlers
+      window.openLoginModal = function() {
+        const modal = document.getElementById('loginModal');
+        if (!modal) {
+          console.error('Login modal not found');
+          return;
+        }
+        modal.classList.add('active');
+        const errorDiv = document.getElementById('loginError');
+        if (errorDiv) errorDiv.innerHTML = '';
+        if (typeof window.closeAuthGate === 'function') {
+          window.closeAuthGate();
+        }
+      };
+
+      window.closeLoginModal = function() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('loginForm');
+          if (form) form.reset();
+        }
+      };
+
+      window.openSignupModal = function() {
+        const modal = document.getElementById('signupModal');
+        if (!modal) {
+          console.error('Signup modal not found');
+          return;
+        }
+        modal.classList.add('active');
+        const errorDiv = document.getElementById('signupError');
+        if (errorDiv) errorDiv.innerHTML = '';
+        if (typeof window.closeAuthGate === 'function') {
+          window.closeAuthGate();
+        }
+      };
+
+      window.closeSignupModal = function() {
+        const modal = document.getElementById('signupModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('signupForm');
+          if (form) form.reset();
+        }
+      };
+
+      window.showAuthGate = function() {
+        const authGate = document.getElementById('authGate');
+        if (authGate) {
+          authGate.classList.add('active');
+        }
+      };
+
+      window.closeAuthGate = function() {
+        const authGate = document.getElementById('authGate');
+        if (authGate) {
+          authGate.classList.remove('active');
+        }
+      };
+
+      window.openForgotPasswordModal = function() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.classList.add('active');
+          const errorDiv = document.getElementById('forgotPasswordError');
+          if (errorDiv) errorDiv.innerHTML = '';
+        }
+      };
+
+      window.closeForgotPasswordModal = function() {
+        const modal = document.getElementById('forgotPasswordModal');
+        if (modal) {
+          modal.classList.remove('active');
+          const form = document.getElementById('forgotPasswordForm');
+          if (form) form.reset();
+        }
+      };
+
       const nameInput = document.getElementById('name');
       const taglineInput = document.getElementById('tagline');
       const locationInput = document.getElementById('location');
@@ -2406,26 +2485,11 @@
         });
       }
 
-      // Auth gate functions
-      function showAuthGate() {
-        const authGate = document.getElementById('authGate');
-        if (authGate) {
-          authGate.classList.add('active');
-        }
-      }
-
-      function closeAuthGate() {
-        const authGate = document.getElementById('authGate');
-        if (authGate) {
-          authGate.classList.remove('active');
-        }
-      }
-
       // Close auth gate when clicking outside
       document.addEventListener('click', (e) => {
         const authGate = document.getElementById('authGate');
         if (authGate && authGate.classList.contains('active') && e.target === authGate) {
-          closeAuthGate();
+          window.closeAuthGate();
         }
       });
 
@@ -2560,66 +2624,7 @@
         }
       }
 
-      // Modal functions - make sure they're globally accessible
-      window.openLoginModal = function() {
-        const modal = document.getElementById('loginModal');
-        if (!modal) {
-          console.error('Login modal not found');
-          return;
-        }
-        modal.classList.add('active');
-        const errorDiv = document.getElementById('loginError');
-        if (errorDiv) errorDiv.innerHTML = '';
-        closeAuthGate();
-      };
-
-      window.closeLoginModal = function() {
-        const modal = document.getElementById('loginModal');
-        if (modal) {
-          modal.classList.remove('active');
-          const form = document.getElementById('loginForm');
-          if (form) form.reset();
-        }
-      };
-
-      window.openSignupModal = function() {
-        const modal = document.getElementById('signupModal');
-        if (!modal) {
-          console.error('Signup modal not found');
-          return;
-        }
-        modal.classList.add('active');
-        const errorDiv = document.getElementById('signupError');
-        if (errorDiv) errorDiv.innerHTML = '';
-        closeAuthGate();
-      };
-
-      window.closeSignupModal = function() {
-        const modal = document.getElementById('signupModal');
-        if (modal) {
-          modal.classList.remove('active');
-          const form = document.getElementById('signupForm');
-          if (form) form.reset();
-        }
-      };
-
-      window.openForgotPasswordModal = function() {
-        const modal = document.getElementById('forgotPasswordModal');
-        if (modal) {
-          modal.classList.add('active');
-          const errorDiv = document.getElementById('forgotPasswordError');
-          if (errorDiv) errorDiv.innerHTML = '';
-        }
-      };
-
-      window.closeForgotPasswordModal = function() {
-        const modal = document.getElementById('forgotPasswordModal');
-        if (modal) {
-          modal.classList.remove('active');
-          const form = document.getElementById('forgotPasswordForm');
-          if (form) form.reset();
-        }
-      };
+      // Modal functions are already defined at the top of the script
 
       // Close modals on outside click
       document.querySelectorAll('.modal').forEach(modal => {
