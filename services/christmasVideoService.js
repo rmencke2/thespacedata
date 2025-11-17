@@ -309,11 +309,16 @@ function initializeChristmasVideoService(app) {
             }
             
             // Step 2: Crop a horizontal strip from the CENTER to avoid cutting branches
-            // The scaled garland now has width=${width}, height will be calculated
+            // The scaled garland now has width=${width}, height will be calculated automatically
             // Crop from center vertically: y = (input_height - output_height) / 2
             // This creates a horizontal strip: width=${width} > height=${garlandHeight}
-            // CRITICAL: crop=WIDTH:HEIGHT where WIDTH must be > HEIGHT for horizontal strip
+            // CRITICAL: crop=WIDTH:HEIGHT where WIDTH (${width}) MUST be > HEIGHT (${garlandHeight}) for horizontal strip
+            // crop syntax: crop=w:h:x:y or crop=WIDTH:HEIGHT:x:y
+            // We want: crop=${width}:${garlandHeight}:0:center_y = horizontal strip (wide x short)
             filters.push(`[garland_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[garland_strip]`);
+            
+            // Verify strip dimensions are correct (this is just for logging, FFmpeg will process it)
+            // After this filter, garland_strip should be ${width}x${garlandHeight} (horizontal)
             
             // DEBUG: Log expected dimensions
             console.log(`🎄 CRITICAL: garland_strip MUST be ${width}x${garlandHeight} (WIDE x SHORT)`);
@@ -327,11 +332,19 @@ function initializeChristmasVideoService(app) {
             filters.push(`[garland_bottom_raw]vflip[garland_bottom]`);
             
             // Overlay positioning for TOP and BOTTOM placement:
-            // overlay filter syntax: overlay=x:y where x=horizontal, y=vertical
-            // - Top: x=0 (left), y=0 (top) = horizontal border at TOP
-            // - Bottom: x=0 (left), y=H-h (bottom) = horizontal border at BOTTOM
-            // CRITICAL: If garland appears on SIDES, the strip is VERTICAL (216x1920) instead of HORIZONTAL (1920x216)
-            // Use standard overlay syntax (not x= and y= separately)
+            // overlay filter syntax: overlay=x:y
+            // - Top garland: overlay at x=0, y=0 (top-left corner) = horizontal border at TOP
+            // - Bottom garland: overlay at x=0, y=H-h (bottom-left) = horizontal border at BOTTOM
+            // 
+            // CRITICAL DEBUGGING:
+            // If garland appears on LEFT/RIGHT sides:
+            //   - The strip is VERTICAL (height > width, e.g., 216x1920) ✗
+            //   - overlay at (0,0) places it on LEFT side
+            // If garland appears on TOP/BOTTOM:
+            //   - The strip is HORIZONTAL (width > height, e.g., 1920x216) ✓
+            //   - overlay at (0,0) places it at TOP
+            // 
+            // The strip MUST be ${width}x${garlandHeight} (WIDE x SHORT) for top/bottom placement
             filters.push(`[v0][garland_top]overlay=0:0[v1]`);
             filters.push(`[v1][garland_bottom]overlay=0:${height - garlandHeight}[v]`);
             
