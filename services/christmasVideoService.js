@@ -265,14 +265,13 @@ function initializeChristmasVideoService(app) {
           command.inputOptions(['-noautorotate']);
           
           // Add garland image as input FIRST
-          // Use -noautorotate to prevent FFmpeg from auto-rotating based on EXIF
           command.input(framePath);
           
           // If separate bottom garland exists, add it as second input
           if (hasBottomFrame) {
-            // Add -noautorotate to prevent any auto-rotation of the bottom image
+            // Add bottom image - it's already correct, no transformations needed
             command.input(bottomFramePath);
-            console.log('🎄 Using separate bottom garland image');
+            console.log('🎄 Using separate bottom garland image (no rotation/flip needed)');
           }
           
           // Get garland image dimensions to determine orientation
@@ -360,9 +359,8 @@ function initializeChristmasVideoService(app) {
             if (hasBottomFrame) {
               // Use separate bottom garland image
               // The bottom image is already correct and pre-flipped - just scale and crop, NO rotation, NO flipping
-              // IMPORTANT: Use scale filter with explicit flags to prevent any auto-rotation or flipping
-              // scale=w:h:flags=noautorotate ensures the image is used exactly as-is
-              filters.push(`[2:v]scale=${width}:-1:flags=noautorotate[bottom_scaled]`);
+              // Scale to video width (maintains aspect ratio, no flipping)
+              filters.push(`[2:v]scale=${width}:-1[bottom_scaled]`);
               // Crop from center to get the horizontal strip
               filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[bottom_strip]`);
               
