@@ -39,9 +39,27 @@ function initDatabase() {
           name TEXT,
           avatar_url TEXT,
           subscription_tier TEXT DEFAULT 'free',
+          is_admin BOOLEAN DEFAULT 0,
+          is_blocked BOOLEAN DEFAULT 0,
+          blocked_reason TEXT,
+          blocked_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           last_login DATETIME,
           UNIQUE(provider, provider_id)
+        )
+      `);
+
+      // Custom user limits table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS custom_user_limits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER UNIQUE,
+          daily_limit INTEGER,
+          hourly_limit INTEGER,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `);
 
@@ -180,11 +198,209 @@ class Database {
   async getUserById(id) {
     return new Promise((resolve, reject) => {
       this.db.get(
-        'SELECT id, email, name, avatar_url, subscription_tier, email_verified, created_at, last_login FROM users WHERE id = ?',
+        'SELECT id, email, name, avatar_url, subscription_tier, email_verified, is_admin, is_blocked, blocked_reason, blocked_at, created_at, last_login FROM users WHERE id = ?',
         [id],
         (err, row) => {
           if (err) reject(err);
           else resolve(row);
+        }
+      );
+    });
+  }
+
+  async getAllUsers(limit = 100, offset = 0) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT id, email, name, subscription_tier, email_verified, is_admin, is_blocked, blocked_reason, blocked_at, created_at, last_login 
+         FROM users 
+         ORDER BY created_at DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async getUserCount() {
+    return new Promise((resolve, reject) => {
+      this.db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
+        if (err) reject(err);
+        else resolve(row?.count || 0);
+      });
+    });
+  }
+
+  async getRecentSignups(days = 7) {
+    return new Promise((resolve, reject) => {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      this.db.all(
+        `SELECT id, email, name, subscription_tier, created_at 
+         FROM users 
+         WHERE created_at > ? 
+         ORDER BY created_at DESC`,
+        [since],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async getUserActivity(userId, limit = 50) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT id, endpoint, ip_address, created_at 
+         FROM usage_logs 
+         WHERE user_id = ? 
+         ORDER BY created_at DESC 
+         LIMIT ?`,
+        [userId, limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async getIPActivity(ipAddress, limit = 50) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT id, user_id, endpoint, created_at 
+         FROM usage_logs 
+         WHERE ip_address = ? 
+         ORDER BY created_at DESC 
+         LIMIT ?`,
+        [ipAddress, limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async getTopUsersByActivity(limit = 20, days = 7) {
+    return new Promise((resolve, reject) => {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      this.db.all(
+        `SELECT u.id, u.email, u.name, COUNT(ul.id) as activity_count
+         FROM users u
+         LEFT JOIN usage_logs ul ON u.id = ul.user_id AND ul.created_at > ?
+         GROUP BY u.id
+         ORDER BY activity_count DESC
+         LIMIT ?`,
+        [since, limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async getTopIPsByActivity(limit = 20, days = 7) {
+    return new Promise((resolve, reject) => {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      this.db.all(
+        `SELECT ip_address, COUNT(*) as activity_count, COUNT(DISTINCT user_id) as unique_users
+         FROM usage_logs
+         WHERE created_at > ?
+         GROUP BY ip_address
+         ORDER BY activity_count DESC
+         LIMIT ?`,
+        [since, limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  async blockUser(userId, reason = null) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'UPDATE users SET is_blocked = 1, blocked_reason = ?, blocked_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [reason, userId],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  }
+
+  async unblockUser(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'UPDATE users SET is_blocked = 0, blocked_reason = NULL, blocked_at = NULL WHERE id = ?',
+        [userId],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  }
+
+  async setCustomUserLimits(userId, dailyLimit, hourlyLimit, notes = null) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        `INSERT INTO custom_user_limits (user_id, daily_limit, hourly_limit, notes, updated_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(user_id) DO UPDATE SET
+           daily_limit = ?,
+           hourly_limit = ?,
+           notes = ?,
+           updated_at = CURRENT_TIMESTAMP`,
+        [userId, dailyLimit, hourlyLimit, notes, dailyLimit, hourlyLimit, notes],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  }
+
+  async getCustomUserLimits(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT * FROM custom_user_limits WHERE user_id = ?',
+        [userId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+  }
+
+  async removeCustomUserLimits(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'DELETE FROM custom_user_limits WHERE user_id = ?',
+        [userId],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  }
+
+  async setAdminStatus(userId, isAdmin) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'UPDATE users SET is_admin = ? WHERE id = ?',
+        [isAdmin ? 1 : 0, userId],
+        function(err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
         }
       );
     });

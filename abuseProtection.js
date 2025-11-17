@@ -62,15 +62,28 @@ async function recordAbuse(identifier, identifierType, violationType) {
 async function checkUserLimits(userId, subscriptionTier) {
   const db = await getDatabase();
   
-  const limits = subscriptionTier === 'premium' || subscriptionTier === 'pro'
-    ? {
-        daily: ABUSE_CONFIG.PREMIUM_TIER_DAILY_LIMIT,
-        hourly: ABUSE_CONFIG.PREMIUM_TIER_HOURLY_LIMIT,
-      }
-    : {
-        daily: ABUSE_CONFIG.FREE_TIER_DAILY_LIMIT,
-        hourly: ABUSE_CONFIG.FREE_TIER_HOURLY_LIMIT,
-      };
+  // Check for custom limits first
+  const customLimits = await db.getCustomUserLimits(userId);
+  
+  let limits;
+  if (customLimits) {
+    // Use custom limits if set
+    limits = {
+      daily: customLimits.daily_limit,
+      hourly: customLimits.hourly_limit,
+    };
+  } else {
+    // Use tier-based limits
+    limits = subscriptionTier === 'premium' || subscriptionTier === 'pro'
+      ? {
+          daily: ABUSE_CONFIG.PREMIUM_TIER_DAILY_LIMIT,
+          hourly: ABUSE_CONFIG.PREMIUM_TIER_HOURLY_LIMIT,
+        }
+      : {
+          daily: ABUSE_CONFIG.FREE_TIER_DAILY_LIMIT,
+          hourly: ABUSE_CONFIG.FREE_TIER_HOURLY_LIMIT,
+        };
+  }
   
   const dailyCount = await db.getUsageCount(userId, ABUSE_CONFIG.DAY_MS);
   const hourlyCount = await db.getUsageCount(userId, ABUSE_CONFIG.HOUR_MS);
@@ -85,6 +98,7 @@ async function checkUserLimits(userId, subscriptionTier) {
       daily: Math.max(0, limits.daily - dailyCount),
       hourly: Math.max(0, limits.hourly - hourlyCount),
     },
+    customLimits: !!customLimits,
   };
 }
 
@@ -182,6 +196,20 @@ async function abuseProtectionMiddleware(req, res, next) {
           error: 'Account temporarily blocked due to abuse. Please contact support.',
           blocked: true,
         });
+      }
+      
+      // Check if user is blocked in users table
+      try {
+        const db = await getDatabase();
+        const user = await db.getUserById(req.user.id);
+        if (user && user.is_blocked) {
+          return res.status(429).json({
+            error: user.blocked_reason || 'Account blocked by administrator. Please contact support.',
+            blocked: true,
+          });
+        }
+      } catch (dbErr) {
+        console.error('Error checking user block status:', dbErr);
       }
     }
     
