@@ -260,8 +260,10 @@ function initializeChristmasVideoService(app) {
           command.input(framePath);
           
           // Get garland image dimensions (assume it's horizontal, we'll scale to video width)
-          // Scale garland to video width, but keep it narrow (about 10% of video height for top/bottom)
-          const garlandHeight = Math.floor(height * 0.1); // 10% of video height
+          // Scale garland to video width, but keep it narrow (about 8% of video height for top/bottom)
+          // You can adjust this percentage to make the garland narrower or wider
+          const garlandHeightPercent = 0.08; // 8% of video height (adjust this value: 0.05 = 5%, 0.15 = 15%)
+          const garlandHeight = Math.floor(height * garlandHeightPercent);
           
           // Scale frame to match video width, but keep it narrow
           command.complexFilter([
