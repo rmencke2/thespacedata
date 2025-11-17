@@ -329,8 +329,8 @@ function initializeChristmasVideoService(app) {
             // If it's appearing on sides, the strip is vertical (tall and narrow) - that's the bug
             
             // Create garlands for all 4 sides: top, bottom, left, right
-            // Split the horizontal strip into multiple copies
-            filters.push(`[garland_strip]split[garland_h1][garland_h2][garland_h3][garland_h4]`);
+            // Split the horizontal strip into 4 copies using split=4
+            filters.push(`[garland_strip]split=4[garland_h1][garland_h2][garland_h3][garland_h4]`);
             
             // Top and bottom: use horizontal strips as-is
             filters.push(`[garland_h1]copy[garland_top]`);
