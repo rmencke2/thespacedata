@@ -168,13 +168,14 @@ function initializeChristmasVideoService(app) {
               }
             } else {
               if (snowPath) {
-                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
+                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown', '-noautorotate']);
               } else {
-                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
+                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown', '-noautorotate']);
               }
             }
 
             command
+              .outputOptions(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-c:a', 'aac', '-b:a', '128k'])
               .output(outputPath)
               .on('start', (commandLine) => {
                 console.log('🎄 FFmpeg command:', commandLine);
@@ -219,6 +220,7 @@ function initializeChristmasVideoService(app) {
           '-map', '0:v',
           '-map', '0:a:0',
           '-ignore_unknown',
+          '-noautorotate', // Preserve original orientation
           '-c:v', 'libx264',
           '-preset', 'medium',
           '-crf', '23',
@@ -235,43 +237,59 @@ function initializeChristmasVideoService(app) {
   // Preset 3: Holiday Frame - Add Christmas garland border frame
   async function applyHolidayFrame(inputPath, outputPath, includeMusic = false) {
     return new Promise((resolve, reject) => {
-      // Get video dimensions
+      // Get video dimensions and metadata
       ffmpeg.ffprobe(inputPath, (err, metadata) => {
         if (err) return reject(err);
         
         const width = metadata.streams[0].width;
         const height = metadata.streams[0].height;
         
+        // Check for rotation metadata and preserve it
+        const rotation = metadata.streams[0].tags?.rotate || 
+                        metadata.streams[0].side_data?.find(sd => sd.rotation)?.rotation || 
+                        null;
+        
         // Path to Christmas garland frame image
         const framePath = path.join(assetsDir, 'christmas-garland-frame.png');
         
         if (fs.existsSync(framePath)) {
-          // Use garland image as overlay frame
+          // Use garland image as overlay - only top and bottom
           const command = ffmpeg(inputPath);
           
           // Add garland image as input FIRST
           command.input(framePath);
           
-          // Scale frame to match video dimensions and overlay
+          // Get garland image dimensions (assume it's horizontal, we'll scale to video width)
+          // Scale garland to video width, but keep it narrow (about 10% of video height for top/bottom)
+          const garlandHeight = Math.floor(height * 0.1); // 10% of video height
+          
+          // Scale frame to match video width, but keep it narrow
           command.complexFilter([
-            // Apply color grading to main video
+            // Apply color grading to main video and preserve rotation
             `[0:v]eq=brightness=0.03:saturation=1.2[v0]`,
-            // Scale garland frame to video size
-            `[1:v]scale=${width}:${height}[frame]`,
-            // Overlay frame on video
-            '[v0][frame]overlay=0:0[v]'
+            // Scale garland to video width, maintain aspect ratio, then crop to desired height
+            `[1:v]scale=${width}:-1[garland_scaled]`,
+            // Create top garland (crop from top of scaled garland)
+            `[garland_scaled]crop=${width}:${garlandHeight}:0:0[garland_top]`,
+            // Create bottom garland (flip vertically and crop)
+            `[garland_scaled]crop=${width}:${garlandHeight}:0:0, vflip[garland_bottom]`,
+            // Overlay top garland
+            `[v0][garland_top]overlay=0:0[v1]`,
+            // Overlay bottom garland
+            `[v1][garland_bottom]overlay=0:${height - garlandHeight}[v]`
           ]);
           
           command
             .outputOptions([
               '-map', '[v]',
-              '-map', '0:a:0', // Map only the first valid audio stream (skip problematic streams)
+              '-map', '0:a:0',
               '-c:v', 'libx264',
               '-preset', 'medium',
               '-crf', '23',
               '-c:a', 'aac',
               '-b:a', '128k',
-              '-ignore_unknown' // Ignore unknown codecs in input
+              '-ignore_unknown',
+              '-noautorotate' // Preserve original orientation
             ])
             .output(outputPath)
             .on('start', (cmd) => console.log('🎄 FFmpeg command:', cmd))
@@ -295,11 +313,9 @@ function initializeChristmasVideoService(app) {
           console.log('⚠️  Christmas garland frame not found, using fallback border');
           ffmpeg(inputPath)
             .videoFilters([
-              // Draw Christmas-colored border
-              'drawbox=x=0:y=0:w=iw:h=30:color=red@0.8:t=fill',
-              'drawbox=x=0:y=ih-30:w=iw:h=30:color=green@0.8:t=fill',
-              'drawbox=x=0:y=0:w=30:h=ih:color=red@0.8:t=fill',
-              'drawbox=x=iw-30:y=0:w=30:h=ih:color=green@0.8:t=fill',
+              // Draw Christmas-colored border (top and bottom only)
+              'drawbox=x=0:y=0:w=iw:h=40:color=red@0.8:t=fill',
+              'drawbox=x=0:y=ih-40:w=iw:h=40:color=green@0.8:t=fill',
               // Add warm glow
               'eq=brightness=0.03:saturation=1.2',
             ])
@@ -307,6 +323,7 @@ function initializeChristmasVideoService(app) {
               '-map', '0:v',
               '-map', '0:a:0',
               '-ignore_unknown',
+              '-noautorotate', // Preserve original orientation
               '-c:v', 'libx264',
               '-preset', 'medium',
               '-crf', '23',
@@ -334,6 +351,7 @@ function initializeChristmasVideoService(app) {
           '-map', '0:v',
           '-map', '0:a:0',
           '-ignore_unknown',
+          '-noautorotate', // Preserve original orientation
           '-c:v', 'libx264',
           '-preset', 'medium',
           '-crf', '23',
