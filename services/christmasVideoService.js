@@ -293,22 +293,27 @@ function initializeChristmasVideoService(app) {
             ];
             
             // ALWAYS create horizontal strips (wide x short) for top/bottom placement
-            // If garland appears on sides, it means we're creating vertical strips (wrong!)
+            // The garland image should be used as-is if horizontal, or rotated if vertical
             if (isGarlandVertical) {
               // Garland is vertical (tall): rotate 90° clockwise to make it horizontal
               // transpose=1 rotates 90° clockwise: tall becomes wide
               filters.push(`[1:v]transpose=1[garland_rotated]`);
               // Scale rotated (now horizontal) garland to match video width
+              // Use scale to fit width, maintain aspect ratio
               filters.push(`[garland_rotated]scale=${width}:-1[garland_scaled]`);
             } else {
-              // Garland is already horizontal (wide): scale to video width
+              // Garland is already horizontal (wide): scale to video width, maintain aspect ratio
               filters.push(`[1:v]scale=${width}:-1[garland_scaled]`);
             }
             
-            // CRITICAL: Crop must create HORIZONTAL strip (width > height)
-            // crop=WIDTH:HEIGHT:x:y where WIDTH should be large, HEIGHT should be small
-            // For 1920x1080 video with 20% height: crop=1920:216:0:0 = horizontal strip ✓
-            // If we get crop=216:1920:0:0 = vertical strip ✗ (this causes sides placement)
+            // CRITICAL: Crop must create HORIZONTAL strip (width > height) for top/bottom
+            // crop=WIDTH:HEIGHT:x:y
+            // We want: crop=1920:216:0:0 (horizontal: wide x short) ✓
+            // NOT: crop=216:1920:0:0 (vertical: narrow x tall) ✗
+            // Crop from the CENTER of the scaled garland to avoid cutting off branches
+            // First, get the scaled garland height to calculate center
+            // We'll crop from y=0 (top) but ensure we don't cut off branches
+            // For now, crop from top - if branches are cut, we can adjust the y offset
             filters.push(`[garland_scaled]crop=${width}:${garlandHeight}:0:0[garland_strip]`);
             
             // Verify: garland_strip should be ${width}x${garlandHeight} (horizontal: wide and short)
@@ -318,16 +323,19 @@ function initializeChristmasVideoService(app) {
             filters.push(`[garland_strip]split[garland_top][garland_bottom_raw]`);
             filters.push(`[garland_bottom_raw]vflip[garland_bottom]`);
             
-            // Overlay positioning:
-            // - Top garland: x=0 (left edge), y=0 (top edge) - creates horizontal border at top
-            // - Bottom garland: x=0 (left edge), y=height-garlandHeight (bottom edge) - creates horizontal border at bottom
-            // If garland appears on LEFT/RIGHT sides, the strip is VERTICAL (wrong orientation)
-            // If garland appears on TOP/BOTTOM, the strip is HORIZONTAL (correct orientation)
-            filters.push(`[v0][garland_top]overlay=0:0[v1]`);
-            filters.push(`[v1][garland_bottom]overlay=0:${height - garlandHeight}[v]`);
+            // Overlay positioning for TOP and BOTTOM placement:
+            // overlay=x:y where x=horizontal position, y=vertical position
+            // - Top garland: x=0 (left edge), y=0 (top edge) - horizontal border at TOP
+            // - Bottom garland: x=0 (left edge), y=H-h (bottom edge) - horizontal border at BOTTOM
+            // If garland appears on LEFT/RIGHT, the strip dimensions are wrong (vertical instead of horizontal)
+            // Ensure garland_strip is ${width}x${garlandHeight} (wide x short, not tall x narrow)
+            filters.push(`[v0][garland_top]overlay=x=0:y=0[v1]`);
+            filters.push(`[v1][garland_bottom]overlay=x=0:y=${height - garlandHeight}[v]`);
             
-            console.log(`🎄 Expected garland strip dimensions: ${width}x${garlandHeight} (horizontal: wide x short)`);
-            console.log(`🎄 Overlay positions: top at (0, 0), bottom at (0, ${height - garlandHeight})`);
+            console.log(`🎄 Expected garland strip: ${width}x${garlandHeight} (horizontal: WIDE x SHORT)`);
+            console.log(`🎄 Overlay: top at (x=0, y=0), bottom at (x=0, y=${height - garlandHeight})`);
+            console.log(`🎄 If garland appears on SIDES, the strip is VERTICAL (wrong!)`);
+            console.log(`🎄 If garland appears on TOP/BOTTOM, the strip is HORIZONTAL (correct!)`);
             
             command.complexFilter(filters);
             
