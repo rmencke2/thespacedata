@@ -117,6 +117,9 @@ function initializeChristmasVideoService(app) {
           .then(snowPath => {
             const command = ffmpeg(inputPath);
             
+            // Preserve original orientation - apply to input
+            command.inputOptions(['-noautorotate']);
+            
             if (snowPath) {
               // Apply warm color grading and overlay snow
               command.complexFilter([
