@@ -239,21 +239,28 @@ function initializeChristmasVideoService(app) {
           // Use garland image as overlay frame
           const command = ffmpeg(inputPath);
           
+          // Add garland image as input FIRST
+          command.input(framePath);
+          
           // Scale frame to match video dimensions and overlay
           command.complexFilter([
+            // Apply color grading to main video
+            `[0:v]eq=brightness=0.03:saturation=1.2[v0]`,
             // Scale garland frame to video size
             `[1:v]scale=${width}:${height}[frame]`,
-            // Overlay frame on video with warm color grading
-            `[0:v]eq=brightness=0.03:saturation=1.2[v0]`,
-            '[v0][frame]overlay=0:0:format=auto[v]'
+            // Overlay frame on video
+            '[v0][frame]overlay=0:0[v]'
           ]);
           
           command
-            .input(framePath)
             .outputOptions(['-map', '[v]', '-map', '0:a'])
             .output(outputPath)
+            .on('start', (cmd) => console.log('🎄 FFmpeg command:', cmd))
             .on('end', () => resolve(outputPath))
-            .on('error', reject)
+            .on('error', (err) => {
+              console.error('❌ FFmpeg error:', err);
+              reject(err);
+            })
             .run();
         } else {
           // Fallback to simple colored border if garland image not found
