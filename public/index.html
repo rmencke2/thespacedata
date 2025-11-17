@@ -3701,7 +3701,17 @@
             } else {
               closeLoginModal();
               await checkAuthStatus();
-              // After successful login, logo generator will be shown via updateAuthUI
+              
+              // Check for redirect parameter
+              const urlParams = new URLSearchParams(window.location.search);
+              const redirect = urlParams.get('redirect');
+              if (redirect) {
+                window.location.href = redirect;
+              } else {
+                // After successful login, logo generator will be shown via updateAuthUI
+                // Refresh the page to ensure all state is updated
+                window.location.reload();
+              }
             }
           } else {
             const errorMsg = data.error || window.i18n.t('error.loginFailed');

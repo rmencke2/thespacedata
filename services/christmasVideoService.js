@@ -344,8 +344,20 @@ function initializeChristmasVideoService(app) {
 
       const { preset = 'snow_magic', includeMusic = false } = req.body;
       const inputPath = req.file.path;
-      const outputFileName = `christmas-${req.file.filename}-${Date.now()}.mp4`;
+      
+      // Ensure output directory exists
+      if (!fs.existsSync(videoOutputDir)) {
+        fs.mkdirSync(videoOutputDir, { recursive: true });
+      }
+      
+      // Shorten filename to avoid path length issues
+      const shortId = req.file.filename.substring(0, 8);
+      const timestamp = Date.now();
+      const outputFileName = `xmas-${shortId}-${timestamp}.mp4`;
       const outputPath = path.join(videoOutputDir, outputFileName);
+      
+      console.log(`📁 Input: ${inputPath}`);
+      console.log(`📁 Output: ${outputPath}`);
 
       try {
         console.log(`🎄 Processing video with preset: ${preset}`);
