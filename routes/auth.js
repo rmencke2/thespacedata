@@ -181,6 +181,15 @@ router.post(
         email_verified: !!user.email_verified,
       };
 
+      // Explicitly save session before sending response
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('❌ Session save error during login:', saveErr);
+        } else {
+          console.log(`✅ Login session saved - User ID: ${user.id}, Session ID: ${req.sessionID}`);
+        }
+      });
+
       res.json({
         success: true,
         user: {

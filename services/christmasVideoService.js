@@ -215,6 +215,16 @@ function initializeChristmasVideoService(app) {
           // Add sparkle effect (simulated with noise)
           'noise=alls=20:allf=t+u',
         ])
+        .outputOptions([
+          '-map', '0:v',
+          '-map', '0:a:0',
+          '-ignore_unknown',
+          '-c:v', 'libx264',
+          '-preset', 'medium',
+          '-crf', '23',
+          '-c:a', 'aac',
+          '-b:a', '128k'
+        ])
         .output(outputPath)
         .on('end', () => resolve(outputPath))
         .on('error', reject)
@@ -255,12 +265,13 @@ function initializeChristmasVideoService(app) {
           command
             .outputOptions([
               '-map', '[v]',
-              '-map', '0:a?',
+              '-map', '0:a:0', // Map only the first valid audio stream (skip problematic streams)
               '-c:v', 'libx264',
               '-preset', 'medium',
               '-crf', '23',
               '-c:a', 'aac',
-              '-b:a', '128k'
+              '-b:a', '128k',
+              '-ignore_unknown' // Ignore unknown codecs in input
             ])
             .output(outputPath)
             .on('start', (cmd) => console.log('🎄 FFmpeg command:', cmd))
@@ -292,6 +303,16 @@ function initializeChristmasVideoService(app) {
               // Add warm glow
               'eq=brightness=0.03:saturation=1.2',
             ])
+            .outputOptions([
+              '-map', '0:v',
+              '-map', '0:a:0',
+              '-ignore_unknown',
+              '-c:v', 'libx264',
+              '-preset', 'medium',
+              '-crf', '23',
+              '-c:a', 'aac',
+              '-b:a', '128k'
+            ])
             .output(outputPath)
             .on('end', () => resolve(outputPath))
             .on('error', reject)
@@ -308,6 +329,16 @@ function initializeChristmasVideoService(app) {
         .videoFilters([
           'eq=brightness=0.05:saturation=1.3:contrast=1.1',
           'curves=preset=lighter',
+        ])
+        .outputOptions([
+          '-map', '0:v',
+          '-map', '0:a:0',
+          '-ignore_unknown',
+          '-c:v', 'libx264',
+          '-preset', 'medium',
+          '-crf', '23',
+          '-c:a', 'aac',
+          '-b:a', '128k'
         ])
         .output(outputPath)
         .on('end', () => resolve(outputPath))
