@@ -329,25 +329,30 @@ function initializeChristmasVideoService(app) {
             // Verify: garland_strip should be ${width}x${garlandHeight} (horizontal: wide and short)
             // If it's appearing on sides, the strip is vertical (tall and narrow) - that's the bug
             
-            // Create garlands for 3 sides: top, left, right (no bottom)
+            // Create garlands for 3 sides: top, left, right (NO BOTTOM)
             // Use same garland for all sides
-            filters.push(`[garland_strip]split=3[garland_h1][garland_h3][garland_h4]`);
+            // Split into 3 copies: h1=top, h2=left, h3=right (NO h4 for bottom)
+            filters.push(`[garland_strip]split=3[garland_h1][garland_h2][garland_h3]`);
             filters.push(`[garland_h1]copy[garland_top]`);
             
             // Left and right: rotate horizontal strip 90° to make vertical strips
-            filters.push(`[garland_h3]transpose=2[garland_left]`);
-            filters.push(`[garland_h4]transpose=2,vflip[garland_right]`);
+            // h2 becomes left (vertical), h3 becomes right (vertical, flipped)
+            filters.push(`[garland_h2]transpose=2[garland_left]`);
+            filters.push(`[garland_h3]transpose=2,vflip[garland_right]`);
             
             // Calculate vertical strip width (same as horizontal strip height)
             // Use garlandHeight as the width for vertical strips
             
-            // Overlay 3 sides (no bottom):
+            // Overlay 3 sides ONLY (NO BOTTOM):
             // - Top: horizontal strip at (0, 0)
             // - Left: vertical strip at (0, 0) - will span full height
             // - Right: vertical strip at (width-garlandHeight, 0) - will span full height
+            // NO BOTTOM OVERLAY
             filters.push(`[v0][garland_top]overlay=0:0[v1]`);
             filters.push(`[v1][garland_left]overlay=0:0[v2]`);
             filters.push(`[v2][garland_right]overlay=${width - garlandHeight}:0[v]`);
+            
+            console.log(`🎄 Creating 3 garlands: top (h1), left (h2), right (h3) - NO BOTTOM`);
             
             console.log(`🎄 Expected garland strip: ${width}x${garlandHeight} (horizontal: WIDE x SHORT)`);
             console.log(`🎄 Overlay: top at (x=0, y=0), left at (x=0, y=0), right at (x=${width - garlandHeight}, y=0)`);
