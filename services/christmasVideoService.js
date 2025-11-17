@@ -293,26 +293,27 @@ function initializeChristmasVideoService(app) {
             ];
             
             // ALWAYS create horizontal strips (wide x short) for top/bottom placement
-            // Strategy: Scale garland to exact HEIGHT first, then crop full WIDTH
-            // This GUARANTEES width > height (horizontal strip) regardless of source orientation
+            // Strategy: Scale garland to video WIDTH while maintaining aspect ratio, then crop height
+            // This GUARANTEES width > height (horizontal strip) and prevents ugly stretching
             
-            // Step 1: Rotate if needed, then scale to exact garland height
+            // Step 1: Rotate if needed, then scale to video WIDTH (maintains aspect ratio)
             if (isGarlandVertical) {
               // Garland is vertical (tall): rotate 90° clockwise to make it horizontal
               // transpose=1 rotates 90° clockwise: tall becomes wide
               filters.push(`[1:v]transpose=1[garland_rotated]`);
-              // Scale rotated garland to exact height (maintains aspect ratio, width will be calculated)
-              filters.push(`[garland_rotated]scale=-1:${garlandHeight}[garland_scaled]`);
+              // Scale rotated garland to video WIDTH (maintains aspect ratio, height calculated automatically)
+              filters.push(`[garland_rotated]scale=${width}:-1[garland_scaled]`);
             } else {
-              // Garland is already horizontal (wide): scale to exact height
-              filters.push(`[1:v]scale=-1:${garlandHeight}[garland_scaled]`);
+              // Garland is already horizontal (wide): scale to video WIDTH (maintains aspect ratio)
+              filters.push(`[1:v]scale=${width}:-1[garland_scaled]`);
             }
             
-            // Step 2: Scale to video width (guarantees width > height = horizontal strip)
-            // After scaling to height, the width will be calculated automatically
-            // Then scale to video width to ensure it spans the full width
+            // Step 2: Crop a horizontal strip from the CENTER to avoid cutting branches
+            // The scaled garland now has width=${width}, height will be calculated
+            // Crop from center vertically: y = (input_height - output_height) / 2
             // This creates a horizontal strip: width=${width} > height=${garlandHeight}
-            filters.push(`[garland_scaled]scale=${width}:${garlandHeight}[garland_strip]`);
+            // CRITICAL: crop=WIDTH:HEIGHT where WIDTH must be > HEIGHT for horizontal strip
+            filters.push(`[garland_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[garland_strip]`);
             
             // DEBUG: Log expected dimensions
             console.log(`🎄 CRITICAL: garland_strip MUST be ${width}x${garlandHeight} (WIDE x SHORT)`);
