@@ -146,31 +146,31 @@ function initializeChristmasVideoService(app) {
                     `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
                     `[1:v]scale=${width}:${height}[snow]`,
                     '[v0][snow]overlay=format=auto[v]',
-                    '[0:a]volume=0.7[a0]',
+                    '[0:a:0]volume=0.7[a0]',
                     '[2:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
                     '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
                   ]);
-                  command.outputOptions(['-map', '[v]', '-map', '[a]']);
+                  command.outputOptions(['-map', '[v]', '-map', '[a]', '-ignore_unknown']);
                 } else {
                   command.complexFilter([
-                    '[0:a]volume=0.7[a0]',
+                    '[0:a:0]volume=0.7[a0]',
                     '[1:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
                     '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
                   ]);
-                  command.outputOptions(['-map', '0:v', '-map', '[a]']);
+                  command.outputOptions(['-map', '0:v', '-map', '[a]', '-ignore_unknown']);
                 }
               } else {
                 if (snowPath) {
-                  command.outputOptions(['-map', '[v]', '-map', '0:a']);
+                  command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
                 } else {
-                  command.outputOptions(['-map', '0:v', '-map', '0:a']);
+                  command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
                 }
               }
             } else {
               if (snowPath) {
-                command.outputOptions(['-map', '[v]', '-map', '0:a']);
+                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
               } else {
-                command.outputOptions(['-map', '0:v', '-map', '0:a']);
+                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
               }
             }
 
