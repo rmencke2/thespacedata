@@ -350,9 +350,9 @@ function initializeChristmasVideoService(app) {
             filters.push(`[v2][garland_right]overlay=${width - garlandHeight}:0[v]`);
             
             console.log(`🎄 Expected garland strip: ${width}x${garlandHeight} (horizontal: WIDE x SHORT)`);
-            console.log(`🎄 Overlay: top at (x=0, y=0), bottom at (x=0, y=${height - garlandHeight})`);
+            console.log(`🎄 Overlay: top at (x=0, y=0), left at (x=0, y=0), right at (x=${width - garlandHeight}, y=0)`);
             console.log(`🎄 If garland appears on SIDES, the strip is VERTICAL (wrong!)`);
-            console.log(`🎄 If garland appears on TOP/BOTTOM, the strip is HORIZONTAL (correct!)`);
+            console.log(`🎄 If garland appears on TOP, the strip is HORIZONTAL (correct!)`);
             
             command.complexFilter(filters);
             
