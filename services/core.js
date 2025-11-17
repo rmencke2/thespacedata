@@ -82,15 +82,16 @@ async function initializeCore(app) {
   const db = await getDatabase();
   console.log('✅ Database initialized');
 
-  // Session configuration
+  // Session configuration with persistent SQLite store
+  const SQLiteSessionStore = require('../sessionStore');
   const sessionConfig = {
     name: 'connect.sid',
     secret: process.env.SESSION_SECRET || (() => {
       console.warn('⚠️  WARNING: Using default SESSION_SECRET. Set SESSION_SECRET in .env for production!');
       return 'your-secret-key-change-in-production';
     })(),
-    resave: true,
-    saveUninitialized: true,
+    resave: false, // Don't resave unchanged sessions
+    saveUninitialized: false, // Don't save uninitialized sessions
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
@@ -98,7 +99,7 @@ async function initializeCore(app) {
       sameSite: 'lax',
       path: '/',
     },
-    store: new (require('express-session').MemoryStore)(),
+    store: new SQLiteSessionStore(), // Use persistent SQLite store instead of MemoryStore
   };
 
   app.use(session(sessionConfig));
