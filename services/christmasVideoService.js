@@ -253,12 +253,29 @@ function initializeChristmasVideoService(app) {
           ]);
           
           command
-            .outputOptions(['-map', '[v]', '-map', '0:a'])
+            .outputOptions([
+              '-map', '[v]',
+              '-map', '0:a?',
+              '-c:v', 'libx264',
+              '-preset', 'medium',
+              '-crf', '23',
+              '-c:a', 'aac',
+              '-b:a', '128k'
+            ])
             .output(outputPath)
             .on('start', (cmd) => console.log('🎄 FFmpeg command:', cmd))
-            .on('end', () => resolve(outputPath))
-            .on('error', (err) => {
+            .on('progress', (progress) => {
+              if (progress.percent) {
+                console.log(`⏳ Processing: ${Math.round(progress.percent)}%`);
+              }
+            })
+            .on('end', () => {
+              console.log('✅ Holiday frame processing complete');
+              resolve(outputPath);
+            })
+            .on('error', (err, stdout, stderr) => {
               console.error('❌ FFmpeg error:', err);
+              if (stderr) console.error('❌ FFmpeg stderr:', stderr);
               reject(err);
             })
             .run();
