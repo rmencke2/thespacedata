@@ -292,6 +292,24 @@ function initializeChristmasVideoService(app) {
             console.log(`🎄 Garland image: ${garlandWidth}x${garlandHeight_img} (${isGarlandVertical ? 'vertical' : 'horizontal'})`);
             console.log(`🎄 Video: ${width}x${height}, Garland strip height: ${garlandHeight}`);
             
+            // If using separate bottom image, probe it separately
+            let bottomIsVertical = false;
+            if (hasBottomFrame) {
+              ffmpeg.ffprobe(bottomFramePath, (err, bottomMetadata) => {
+                if (!err && bottomMetadata && bottomMetadata.streams && bottomMetadata.streams[0]) {
+                  const bottomWidth = bottomMetadata.streams[0].width;
+                  const bottomHeight = bottomMetadata.streams[0].height;
+                  bottomIsVertical = bottomHeight > bottomWidth;
+                  console.log(`🎄 Bottom garland image: ${bottomWidth}x${bottomHeight} (${bottomIsVertical ? 'vertical' : 'horizontal'})`);
+                }
+                processGarlands();
+              });
+            } else {
+              processGarlands();
+            }
+            
+            function processGarlands() {
+            
             // Scale frame to match video width, but keep it narrow
             // We need to extract horizontal strips for top/bottom placement
             // IMPORTANT: Final strip must be horizontal (width > height) for top/bottom placement
@@ -339,15 +357,19 @@ function initializeChristmasVideoService(app) {
             // Create garlands for all 4 sides: top, bottom, left, right
             if (hasBottomFrame) {
               // Use separate bottom garland image
-              // Process bottom garland image (input 2) the same way as top
+              // Process bottom garland image (input 2) - check its own orientation
               let bottomFilters = [];
-              if (isGarlandVertical) {
+              if (bottomIsVertical) {
+                // Bottom image is vertical: rotate 90° clockwise to make it horizontal
                 bottomFilters.push(`[2:v]transpose=1[bottom_rotated]`);
                 bottomFilters.push(`[bottom_rotated]scale=${width}:-1[bottom_scaled]`);
               } else {
+                // Bottom image is already horizontal: scale to video width
                 bottomFilters.push(`[2:v]scale=${width}:-1[bottom_scaled]`);
               }
-              bottomFilters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[bottom_strip]`);
+              // Crop from the BOTTOM edge (not center) to preserve the bottom part of the pre-flipped image
+              // This ensures we get the part that's designed to be at the bottom
+              bottomFilters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:in_h-${garlandHeight}[bottom_strip]`);
               
               // Add bottom processing filters
               filters.push(...bottomFilters);
@@ -422,7 +444,8 @@ function initializeChristmasVideoService(app) {
                 reject(err);
               })
               .run();
-          });
+            }
+          }); // End of processGarlands function
         } else {
           // Fallback to simple colored border if garland image not found
           console.log('⚠️  Christmas garland frame not found, using fallback border');
