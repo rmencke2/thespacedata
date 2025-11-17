@@ -171,9 +171,9 @@ function initializeChristmasVideoService(app) {
               }
             } else {
               if (snowPath) {
-                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown', '-noautorotate']);
+                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
               } else {
-                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown', '-noautorotate']);
+                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
               }
             }
 
