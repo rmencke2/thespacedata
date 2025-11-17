@@ -271,8 +271,7 @@ function initializeChristmasVideoService(app) {
           if (hasBottomFrame) {
             // Add bottom image - it's already correct, no transformations needed
             command.input(bottomFramePath);
-            console.log(`🎄 Using separate bottom garland image: ${bottomFramePath}`);
-            console.log('🎄 Bottom image is already correct - will use directly without flipping');
+            console.log('🎄 Using separate bottom garland image (no rotation/flip needed)');
           }
           
           // Get garland image dimensions to determine orientation
@@ -360,14 +359,10 @@ function initializeChristmasVideoService(app) {
             if (hasBottomFrame) {
               // Use separate bottom garland image
               // The bottom image is already correct and pre-flipped - just scale and crop, NO rotation, NO flipping
-              // IMPORTANT: Scale maintains aspect ratio and does NOT flip
+              // Scale to video width (maintains aspect ratio, no flipping)
               filters.push(`[2:v]scale=${width}:-1[bottom_scaled]`);
-              // Crop from TOP edge (y=0) - if image is designed for bottom, top part of image is what we want
-              // This ensures we get the correct part of the pre-flipped image
-              filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:0[bottom_strip]`);
-              
-              console.log(`🎄 Bottom strip: scaled to ${width}px wide, cropped ${garlandHeight}px from top edge`);
-              console.log(`🎄 Bottom strip dimensions should be: ${width}x${garlandHeight} (WIDE x SHORT)`);
+              // Crop from center to get the horizontal strip
+              filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[bottom_strip]`);
               
               // Split top garland strip for top, left, right
               filters.push(`[garland_strip]split=3[garland_h1][garland_h3][garland_h4]`);
