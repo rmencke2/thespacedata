@@ -347,19 +347,9 @@ function initializeChristmasVideoService(app) {
             // Create garlands for all 4 sides
             if (hasBottomFrame) {
               // Use main garland for top, left, right
-              // Use bottom garland image for bottom
+              // Bottom garland temporarily disabled for testing
               
-              console.log(`🎄 Processing bottom garland image (input 2)`);
-              
-              // Process bottom garland image (input 2) - scale and crop to horizontal strip
-              // Scale to video width (maintains aspect ratio)
-              filters.push(`[2:v]scale=${width}:-1[bottom_scaled]`);
-              // Crop from center to get horizontal strip
-              filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[bottom_strip_raw]`);
-              // Flip bottom strip vertically since it's upside down
-              filters.push(`[bottom_strip_raw]vflip[bottom_strip]`);
-              
-              console.log(`🎄 Bottom strip: ${width}x${garlandHeight} (horizontal strip for bottom, flipped)`);
+              console.log(`🎄 Bottom garland image found but DISABLED for testing`);
               
               // Split main garland strip into 3: top, left, right
               filters.push(`[garland_strip]split=3[garland_h1][garland_h2][garland_h3]`);
@@ -368,24 +358,22 @@ function initializeChristmasVideoService(app) {
               // Left and right: rotate horizontal strip 90° to make vertical strips
               // After transpose=2, strip becomes garlandHeight x width (e.g., 216 x 1920)
               // We need to crop it to garlandHeight x height (e.g., 216 x 1080) to match video height
+              // Crop from center vertically to get the middle portion
               filters.push(`[garland_h2]transpose=2[garland_left_rotated]`);
-              filters.push(`[garland_left_rotated]crop=${garlandHeight}:${height}:0:0[garland_left]`);
+              filters.push(`[garland_left_rotated]crop=${garlandHeight}:${height}:0:'(in_h-${height})/2'[garland_left]`);
               
               filters.push(`[garland_h3]transpose=2,vflip[garland_right_rotated]`);
-              filters.push(`[garland_right_rotated]crop=${garlandHeight}:${height}:0:0[garland_right]`);
+              filters.push(`[garland_right_rotated]crop=${garlandHeight}:${height}:0:'(in_h-${height})/2'[garland_right]`);
               
-              // Overlay all 4 sides:
+              // Overlay top, left, right only (bottom disabled for testing):
               // - Top: horizontal strip at (0, 0)
               // - Left: vertical strip at (0, 0) - full height
               // - Right: vertical strip at (width-garlandHeight, 0) - full height
-              // - Bottom: horizontal strip from bottom image at (0, height-garlandHeight)
               filters.push(`[v0][garland_top]overlay=0:0[v1]`);
               filters.push(`[v1][garland_left]overlay=0:0[v2]`);
-              filters.push(`[v2][garland_right]overlay=${width - garlandHeight}:0[v3]`);
-              filters.push(`[v3][bottom_strip]overlay=0:${height - garlandHeight}[v]`);
+              filters.push(`[v2][garland_right]overlay=${width - garlandHeight}:0[v]`);
               
-              console.log(`🎄 ✅ Overlay chain: top -> left -> right -> bottom (using bottom image)`);
-              console.log(`🎄 Bottom overlay position: (0, ${height - garlandHeight})`);
+              console.log(`🎄 ✅ Overlay chain: top -> left -> right (bottom DISABLED for testing)`);
             } else {
               // Use main garland for all 4 sides (fallback if no bottom image)
               filters.push(`[garland_strip]split=4[garland_h1][garland_h2][garland_h3][garland_h4]`);
