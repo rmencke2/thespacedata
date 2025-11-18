@@ -257,6 +257,9 @@ function initializeChristmasVideoService(app) {
         const bottomFramePath = path.join(assetsDir, 'christmas-garland-frame-bottom.png');
         const hasBottomFrame = fs.existsSync(bottomFramePath);
         
+        console.log(`🎄 Main garland path: ${framePath}, exists: ${fs.existsSync(framePath)}`);
+        console.log(`🎄 Bottom garland path: ${bottomFramePath}, exists: ${hasBottomFrame}`);
+        
         if (fs.existsSync(framePath)) {
           // Use garland image for top, left, right sides
           // Use bottom garland image for bottom side (if available)
@@ -271,7 +274,9 @@ function initializeChristmasVideoService(app) {
           // Add bottom garland image as second input (for bottom only)
           if (hasBottomFrame) {
             command.input(bottomFramePath);
-            console.log('🎄 Using separate bottom garland image');
+            console.log(`🎄 ✅ Added bottom garland image as input 2: ${bottomFramePath}`);
+          } else {
+            console.log(`🎄 ⚠️  Bottom garland image NOT found: ${bottomFramePath}`);
           }
           
           // Get garland image dimensions to determine orientation
@@ -344,9 +349,16 @@ function initializeChristmasVideoService(app) {
               // Use main garland for top, left, right
               // Use bottom garland image for bottom
               
+              console.log(`🎄 Processing bottom garland image (input 2)`);
+              
               // Process bottom garland image (input 2) - scale and crop to horizontal strip
+              // Scale to video width (maintains aspect ratio)
               filters.push(`[2:v]scale=${width}:-1[bottom_scaled]`);
-              filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:'(in_h-${garlandHeight})/2'[bottom_strip]`);
+              // Crop from TOP edge (y=0) - if image is designed for bottom, top part is what we want
+              // This ensures we get the correct part of the pre-flipped image
+              filters.push(`[bottom_scaled]crop=${width}:${garlandHeight}:0:0[bottom_strip]`);
+              
+              console.log(`🎄 Bottom strip: ${width}x${garlandHeight} (cropped from top edge, horizontal strip for bottom)`);
               
               // Split main garland strip into 3: top, left, right
               filters.push(`[garland_strip]split=3[garland_h1][garland_h2][garland_h3]`);
@@ -366,8 +378,8 @@ function initializeChristmasVideoService(app) {
               filters.push(`[v2][garland_right]overlay=${width - garlandHeight}:0[v3]`);
               filters.push(`[v3][bottom_strip]overlay=0:${height - garlandHeight}[v]`);
               
-              console.log(`🎄 Using main garland for top, left, right`);
-              console.log(`🎄 Using bottom garland image for bottom`);
+              console.log(`🎄 ✅ Overlay chain: top -> left -> right -> bottom (using bottom image)`);
+              console.log(`🎄 Bottom overlay position: (0, ${height - garlandHeight})`);
             } else {
               // Use main garland for all 4 sides (fallback if no bottom image)
               filters.push(`[garland_strip]split=4[garland_h1][garland_h2][garland_h3][garland_h4]`);
