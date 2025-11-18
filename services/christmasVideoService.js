@@ -47,51 +47,12 @@ function initializeChristmasVideoService(app) {
   });
 
   // Helper function to generate snow overlay using FFmpeg
-  // Creates visible snowflakes using simple geq filter
+  // Since lavfi is not available, we'll add snow directly in the video filter
+  // This function now just returns metadata for snow generation
   function generateSnowOverlay(width, height, duration) {
-    const snowPath = path.join(videoOutputDir, `snow_${width}x${height}_${Date.now()}.mp4`);
-    
-    return new Promise((resolve, reject) => {
-      // Use simple geq filter to create visible white snowflakes
-      // Increase density to make sure snow is visible
-      ffmpeg()
-        .input(`color=c=black:s=${width}x${height}:d=${duration}`)
-        .inputFormat('lavfi')
-        .videoFilters([
-          // Create white snowflakes - increase probability to 0.02 (2%) for better visibility
-          // Make them semi-transparent (alpha=200) so they're visible but not overwhelming
-          `geq=lum='if(lt(random(1),0.02),255,0)':a='if(lt(random(1),0.02),200,0)'`,
-          'fps=30',
-        ])
-        .outputOptions([
-          '-t', duration.toString(),
-          '-pix_fmt', 'rgba',
-          '-shortest',
-        ])
-        .output(snowPath)
-        .on('start', (cmd) => {
-          console.log('❄️  Generating snow overlay...');
-          console.log(`❄️  Dimensions: ${width}x${height}, Duration: ${duration}s`);
-        })
-        .on('end', () => {
-          console.log(`✅ Snow overlay generated: ${snowPath}`);
-          // Verify file exists
-          if (fs.existsSync(snowPath)) {
-            const stats = fs.statSync(snowPath);
-            console.log(`✅ Snow file size: ${stats.size} bytes`);
-            resolve(snowPath);
-          } else {
-            console.error('❌ Snow file was not created');
-            resolve(null);
-          }
-        })
-        .on('error', (err) => {
-          console.error('❌ Snow overlay generation error:', err);
-          console.error('❌ Error details:', err.message);
-          resolve(null);
-        })
-        .run();
-    });
+    // Return metadata instead of generating a file
+    // Snow will be added directly in the video processing filter
+    return Promise.resolve({ width, height, duration });
   }
 
   // Helper function to apply Christmas color grading
@@ -124,71 +85,43 @@ function initializeChristmasVideoService(app) {
         const height = metadata.streams[0].height;
         const duration = metadata.format.duration || 10; // Default to 10 seconds if not available
 
-        // Generate snow overlay
+        // Generate snow overlay metadata (snow will be added directly in filter)
         generateSnowOverlay(width, height, duration)
-          .then(snowPath => {
+          .then(snowMeta => {
             const command = ffmpeg(inputPath);
             
             // Preserve original orientation - apply to input
             command.inputOptions(['-noautorotate']);
             
-            if (snowPath) {
-              // Apply warm color grading and overlay snow
-              command.complexFilter([
-                // Color grade main video
-                `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
-                // Scale snow overlay to match video dimensions
-                `[1:v]scale=${width}:${height},format=rgba[snow]`,
-                // Overlay snow on video with blend mode for visibility
-                '[v0][snow]overlay=0:0:format=auto:alpha=premultiplied[v]'
-              ]);
-              command.input(snowPath);
-              console.log(`❄️  Using snow overlay: ${snowPath}`);
-            } else {
-              // Just apply color grading if snow generation failed
-              command.videoFilters([
-                'eq=brightness=0.05:saturation=1.3:contrast=1.1',
-                'curves=preset=lighter',
-              ]);
-            }
+            // Always add snow directly in the filter chain using geq
+            // Apply warm color grading and add snowflakes
+            command.complexFilter([
+              // Color grade main video first
+              `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
+              // Add white snowflakes using geq - add white pixels where random value is low
+              `[v0]geq=lum='if(lt(random(1),0.02),255,p(X,Y))':a='A(X,Y)'[v]`
+            ]);
+            console.log(`❄️  Adding snow directly to video using geq filter`);
 
             // Handle audio
             if (includeMusic) {
               const musicPath = path.join(assetsDir, 'jingle_bells.mp3');
               if (fs.existsSync(musicPath)) {
                 command.input(musicPath);
-                if (snowPath) {
-                  command.complexFilter([
-                    `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
-                    `[1:v]scale=${width}:${height},format=rgba[snow]`,
-                    '[v0][snow]overlay=0:0:format=auto:alpha=premultiplied[v]',
-                    '[0:a:0]volume=0.7[a0]',
-                    '[2:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
-                    '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
-                  ]);
-                  command.outputOptions(['-map', '[v]', '-map', '[a]', '-ignore_unknown']);
-                  console.log(`❄️  Using snow overlay with music: ${snowPath}`);
-                } else {
-                  command.complexFilter([
-                    '[0:a:0]volume=0.7[a0]',
-                    '[1:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
-                    '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
-                  ]);
-                  command.outputOptions(['-map', '0:v', '-map', '[a]', '-ignore_unknown']);
-                }
+                command.complexFilter([
+                  `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
+                  `[v0]geq=lum='if(lt(random(1),0.02),255,p(X,Y))':a='A(X,Y)'[v]`,
+                  '[0:a:0]volume=0.7[a0]',
+                  '[1:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
+                  '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
+                ]);
+                command.outputOptions(['-map', '[v]', '-map', '[a]', '-ignore_unknown']);
+                console.log(`❄️  Adding snow with music`);
               } else {
-                if (snowPath) {
-                  command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
-                } else {
-                  command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
-                }
+                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
               }
             } else {
-              if (snowPath) {
-                command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
-              } else {
-                command.outputOptions(['-map', '0:v', '-map', '0:a:0', '-ignore_unknown']);
-              }
+              command.outputOptions(['-map', '[v]', '-map', '0:a:0', '-ignore_unknown']);
             }
 
             command
@@ -201,16 +134,9 @@ function initializeChristmasVideoService(app) {
                 console.log(`⏳ Processing: ${Math.round(progress.percent || 0)}%`);
               })
               .on('end', () => {
-                // Clean up snow overlay
-                if (snowPath) {
-                  try { fs.unlinkSync(snowPath); } catch (e) {}
-                }
                 resolve(outputPath);
               })
               .on('error', (err) => {
-                if (snowPath) {
-                  try { fs.unlinkSync(snowPath); } catch (e) {}
-                }
                 reject(err);
               })
               .run();
