@@ -175,7 +175,7 @@ function initializeChristmasVideoService(app) {
           const scaledHeight = snowflakeSize;
           
           // Create multiple snowflakes at different x positions with different speeds
-          const numSnowflakes = 15; // Number of snowflakes
+          const numSnowflakes = 8; // Number of snowflakes (reduced for testing)
           const snowflakes = [];
           const filters = [];
           
@@ -185,18 +185,22 @@ function initializeChristmasVideoService(app) {
           // Add each snowflake with different x position and speed
           for (let i = 0; i < numSnowflakes; i++) {
             const xPos = Math.floor((width / numSnowflakes) * i + (Math.random() * (width / numSnowflakes)));
-            const speed = 30 + (Math.random() * 50); // 30-80 pixels per second
-            const startY = -scaledHeight - (Math.random() * height); // Start above screen
+            const speed = Math.floor(30 + (Math.random() * 50)); // 30-80 pixels per second (rounded)
+            const startY = Math.floor(-scaledHeight - (Math.random() * height)); // Start above screen (rounded)
             
             // Scale snowflake
             filters.push(`[${i + 1}:v]scale=${scaledWidth}:${scaledHeight}[snow${i}]`);
             
             // Overlay with time-based animation (falling)
-            // y position = mod(startY + speed * t, height + scaledHeight) - scaledHeight
-            // This makes snowflakes fall continuously from top to bottom
+            // Use a simpler expression: y = mod(startY + speed * t, height + scaledHeight) - scaledHeight
             const prevLabel = i === 0 ? 'v0' : `v${i}`;
-            const yExpr = `mod(${startY}+${speed}*t,${height + scaledHeight})-${scaledHeight}`;
-            filters.push(`[${prevLabel}][snow${i}]overlay=${xPos}:y=${yExpr}:format=auto[v${i + 1}]`);
+            // Make startY positive by adding offset to avoid negative mod() issues
+            const offset = height + scaledHeight;
+            const positiveStartY = startY + offset;
+            // Round all values to avoid floating point issues
+            const yExpr = `mod(${positiveStartY}+${speed}*t,${offset})-${scaledHeight}`;
+            // FFmpeg overlay: use eval=frame to enable expression evaluation, quote the y expression
+            filters.push(`[${prevLabel}][snow${i}]overlay=${xPos}:y='${yExpr}':eval=frame:format=auto[v${i + 1}]`);
           }
           
           const command = ffmpeg(inputPath);
