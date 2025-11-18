@@ -189,46 +189,101 @@ function initializeChristmasVideoService(app) {
           const snowflakes = [];
           const filters = [];
           
+          // For vertical videos: transpose video 90° clockwise at start, process like horizontal, transpose back at end
+          if (isVertical) {
+            // Transpose video 90° clockwise (transpose=1) - this makes vertical video appear horizontal
+            filters.push(`[0:v]transpose=1[video_rotated]`);
+            // After transpose: width and height are swapped
+            const rotatedWidth = height; // Original height becomes width
+            const rotatedHeight = width; // Original width becomes height
+            
+            // Color grade rotated video
+            filters.push(`[video_rotated]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`);
+            
+            // Now process like horizontal video using rotated dimensions
+            for (let i = 0; i < numSnowflakes; i++) {
+              // X position: distribute across rotated width (which is original height)
+              const xPos = Math.floor((rotatedWidth / numSnowflakes) * i + (Math.random() * (rotatedWidth / numSnowflakes)));
+              // Y position: animate from top to bottom (using rotated height, which is original width)
+              const baseSpeed = 20;
+              const speed = Math.floor(baseSpeed + (Math.random() * 40));
+              const startY = Math.floor(-scaledHeight - (Math.random() * rotatedHeight));
+              const offset = rotatedHeight + scaledHeight;
+              const positiveStartY = startY + offset;
+              const yExpr = `mod(${positiveStartY}+${speed}*t,${offset})-${scaledHeight}`;
+              
+              // Scale snowflake
+              filters.push(`[${i + 1}:v]scale=${scaledWidth}:${scaledHeight}[snow${i}]`);
+              
+              // Add overlay
+              const prevLabel = i === 0 ? 'v0' : `v${i}`;
+              filters.push(`[${prevLabel}][snow${i}]overlay=${xPos}:y='${yExpr}':eval=frame:format=auto[v${i + 1}]`);
+            }
+            
+            // Transpose final output 90° counter-clockwise (transpose=2) to restore original orientation
+            const finalVideoLabel = `v${numSnowflakes}`;
+            filters.push(`[${finalVideoLabel}]transpose=2[video_final]`);
+            const actualFinalLabel = 'video_final';
+            
+            const command = ffmpeg(inputPath);
+            command.inputOptions(['-noautorotate']);
+            
+            // Add snowflake image multiple times
+            for (let i = 0; i < numSnowflakes; i++) {
+              command.input(snowflakePath);
+            }
+            
+            command.complexFilter(filters);
+            console.log(`❄️  Using snowflake image: ${snowflakePath} (${numSnowflakes} animated snowflakes, vertical video - transposed)`);
+            
+            // Handle audio
+            if (includeMusic) {
+              const musicPath = path.join(assetsDir, 'jingle_bells.mp3');
+              if (fs.existsSync(musicPath)) {
+                command.input(musicPath);
+                filters.push(`[0:a:0]volume=0.7[a0]`);
+                filters.push(`[${numSnowflakes + 1}:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]`);
+                filters.push(`[a0][a1]amix=inputs=2:duration=first:normalize=1[a]`);
+                command.complexFilter(filters);
+                command.outputOptions(['-map', `[${actualFinalLabel}]`, '-map', '[a]', '-ignore_unknown']);
+              } else {
+                command.outputOptions(['-map', `[${actualFinalLabel}]`, '-map', '0:a:0', '-ignore_unknown']);
+              }
+            } else {
+              command.outputOptions(['-map', `[${actualFinalLabel}]`, '-map', '0:a:0', '-ignore_unknown']);
+            }
+            
+            command
+              .outputOptions(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-c:a', 'aac', '-b:a', '128k'])
+              .output(outputPath)
+              .on('end', () => resolve(outputPath))
+              .on('error', reject)
+              .run();
+            return;
+          }
+          
+          // For horizontal videos: normal processing
           // Color grade main video first
           filters.push(`[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`);
           
           // Add each snowflake with different position and speed
           for (let i = 0; i < numSnowflakes; i++) {
-            let xPos, yPos, xExpr, yExpr;
+            // X position: distribute across width
+            const xPos = Math.floor((width / numSnowflakes) * i + (Math.random() * (width / numSnowflakes)));
+            // Y position: animate from top to bottom
+            const baseSpeed = 30;
+            const speed = Math.floor(baseSpeed + (Math.random() * 40)); // 30-70 pixels per second
+            const startY = Math.floor(-scaledHeight - (Math.random() * height));
+            const offset = height + scaledHeight;
+            const positiveStartY = startY + offset;
+            const yExpr = `mod(${positiveStartY}+${speed}*t,${offset})-${scaledHeight}`;
             
-            if (isVertical) {
-              // For vertical videos: swap x and y - animate x (right to left) which appears as top to bottom
-              // Y position: distribute across height (static vertical position)
-              const yPos = Math.floor((height / numSnowflakes) * i + (Math.random() * (height / numSnowflakes)));
-              // X position: animate from right to left (appears as top to bottom in portrait orientation)
-              const baseSpeed = 20;
-              const speed = Math.floor(baseSpeed + (Math.random() * 40)); // 20-60 pixels per second
-              const startX = Math.floor(width + scaledWidth + (Math.random() * width)); // Start to the right
-              const offset = width + scaledWidth;
-              const positiveStartX = startX;
-              xExpr = `mod(${positiveStartX}-${speed}*t,${offset})-${scaledWidth}`; // Move left (negative direction)
-              // Rotate snowflake 90° clockwise (transpose=1) for correct orientation
-              filters.push(`[${i + 1}:v]transpose=1[snow_rotated${i}]`);
-              filters.push(`[snow_rotated${i}]scale=${scaledWidth}:${scaledHeight}[snow${i}]`);
-              const prevLabel = i === 0 ? 'v0' : `v${i}`;
-              // X animates (right to left), Y is static
-              filters.push(`[${prevLabel}][snow${i}]overlay=x='${xExpr}':${yPos}:eval=frame:format=auto[v${i + 1}]`);
-            } else {
-              // For horizontal videos: snowflakes fall from top to bottom (y changes)
-              // X position: distribute across width
-              xPos = Math.floor((width / numSnowflakes) * i + (Math.random() * (width / numSnowflakes)));
-              // Y position: animate from top to bottom
-              const baseSpeed = 30;
-              const speed = Math.floor(baseSpeed + (Math.random() * 40)); // 30-70 pixels per second
-              const startY = Math.floor(-scaledHeight - (Math.random() * height));
-              const offset = height + scaledHeight;
-              const positiveStartY = startY + offset;
-              yExpr = `mod(${positiveStartY}+${speed}*t,${offset})-${scaledHeight}`;
-              // X is static, Y animates
-              filters.push(`[${i + 1}:v]scale=${scaledWidth}:${scaledHeight}[snow${i}]`);
-              const prevLabel = i === 0 ? 'v0' : `v${i}`;
-              filters.push(`[${prevLabel}][snow${i}]overlay=${xPos}:y='${yExpr}':eval=frame:format=auto[v${i + 1}]`);
-            }
+            // Scale snowflake
+            filters.push(`[${i + 1}:v]scale=${scaledWidth}:${scaledHeight}[snow${i}]`);
+            
+            // Add overlay
+            const prevLabel = i === 0 ? 'v0' : `v${i}`;
+            filters.push(`[${prevLabel}][snow${i}]overlay=${xPos}:y='${yExpr}':eval=frame:format=auto[v${i + 1}]`);
           }
           
           const command = ffmpeg(inputPath);
@@ -240,9 +295,9 @@ function initializeChristmasVideoService(app) {
           }
           
           command.complexFilter(filters);
-          console.log(`❄️  Using snowflake image: ${snowflakePath} (${numSnowflakes} animated snowflakes)`);
+          console.log(`❄️  Using snowflake image: ${snowflakePath} (${numSnowflakes} animated snowflakes, horizontal video)`);
           
-          // Final video label
+          // Final video label for horizontal
           const finalVideoLabel = `v${numSnowflakes}`;
           
           // Handle audio
