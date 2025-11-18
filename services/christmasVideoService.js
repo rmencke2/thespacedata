@@ -289,7 +289,8 @@ function initializeChristmasVideoService(app) {
             // We need to extract horizontal strips for top/bottom placement
             // IMPORTANT: Final strip must be horizontal (width > height) for top/bottom placement
             const filters = [
-              // Apply color grading to main video and preserve rotation
+              // Apply color grading to main video - NO ROTATION, preserve original orientation
+              // v0 is the video with color grading, dimensions unchanged (width x height)
               `[0:v]eq=brightness=0.03:saturation=1.2[v0]`,
             ];
             
