@@ -47,25 +47,20 @@ function initializeChristmasVideoService(app) {
   });
 
   // Helper function to generate snow overlay using FFmpeg
-  // Creates animated falling snowflakes using time-based animation
+  // Creates visible snowflakes using simple geq filter
   function generateSnowOverlay(width, height, duration) {
     const snowPath = path.join(videoOutputDir, `snow_${width}x${height}_${Date.now()}.mp4`);
     
     return new Promise((resolve, reject) => {
-      // Use a simpler, more reliable approach
-      // Create noise and use geq to make it look like snow, then animate it falling
-      const fps = 30;
-      
-      // Create animated falling snow using geq with time-based Y offset
-      // This creates snowflakes that fall from top to bottom continuously
+      // Use simple geq filter to create visible white snowflakes
+      // Increase density to make sure snow is visible
       ffmpeg()
         .input(`color=c=black:s=${width}x${height}:d=${duration}`)
         .inputFormat('lavfi')
         .videoFilters([
-          // Create snowflakes using geq with time-based animation
-          // mod(Y + speed*T*fps, height) makes snow fall continuously
-          // Use random with time-based seed to create varying snowflakes
-          `geq=lum='if(lt(random(X*Y*T*1000),0.006),255,0)':a='if(lt(random(X*Y*T*1000),0.006),if(lt(mod(Y+${Math.floor(height*0.4)}*T*${fps},${height*2}),${height}),200,0),0)'`,
+          // Create white snowflakes - increase probability to 0.02 (2%) for better visibility
+          // Make them semi-transparent (alpha=200) so they're visible but not overwhelming
+          `geq=lum='if(lt(random(1),0.02),255,0)':a='if(lt(random(1),0.02),200,0)'`,
           'fps=30',
         ])
         .outputOptions([
@@ -74,39 +69,26 @@ function initializeChristmasVideoService(app) {
           '-shortest',
         ])
         .output(snowPath)
-        .on('start', (cmd) => console.log('❄️  Generating falling snow overlay...'))
+        .on('start', (cmd) => {
+          console.log('❄️  Generating snow overlay...');
+          console.log(`❄️  Dimensions: ${width}x${height}, Duration: ${duration}s`);
+        })
         .on('end', () => {
-          console.log('✅ Snow overlay generated');
-          resolve(snowPath);
+          console.log(`✅ Snow overlay generated: ${snowPath}`);
+          // Verify file exists
+          if (fs.existsSync(snowPath)) {
+            const stats = fs.statSync(snowPath);
+            console.log(`✅ Snow file size: ${stats.size} bytes`);
+            resolve(snowPath);
+          } else {
+            console.error('❌ Snow file was not created');
+            resolve(null);
+          }
         })
         .on('error', (err) => {
           console.error('❌ Snow overlay generation error:', err);
-          console.log('⚠️  Trying alternative snow effect...');
-          // Alternative: use multiple geq filters in complex filter
-          ffmpeg()
-            .input(`color=c=black:s=${width}x${height}:d=${duration}`)
-            .inputFormat('lavfi')
-            .complexFilter([
-              // Create base snow pattern
-              `[0:v]geq=lum='if(lt(random(1),0.008),255,0)':a='if(lt(random(1),0.008),180,0)'[snow]`,
-            ])
-            .outputOptions([
-              '-map', '[snow]',
-              '-t', duration.toString(),
-              '-pix_fmt', 'rgba',
-              '-r', '30',
-              '-shortest',
-            ])
-            .output(snowPath)
-            .on('end', () => {
-              console.log('✅ Alternative snow overlay generated');
-              resolve(snowPath);
-            })
-            .on('error', (fallbackErr) => {
-              console.error('❌ All snow generation methods failed:', fallbackErr);
-              resolve(null);
-            })
-            .run();
+          console.error('❌ Error details:', err.message);
+          resolve(null);
         })
         .run();
     });
@@ -155,12 +137,13 @@ function initializeChristmasVideoService(app) {
               command.complexFilter([
                 // Color grade main video
                 `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
-                // Scale snow overlay
-                `[1:v]scale=${width}:${height}[snow]`,
-                // Overlay snow on video
-                '[v0][snow]overlay=format=auto[v]'
+                // Scale snow overlay to match video dimensions
+                `[1:v]scale=${width}:${height},format=rgba[snow]`,
+                // Overlay snow on video with blend mode for visibility
+                '[v0][snow]overlay=0:0:format=auto:alpha=premultiplied[v]'
               ]);
               command.input(snowPath);
+              console.log(`❄️  Using snow overlay: ${snowPath}`);
             } else {
               // Just apply color grading if snow generation failed
               command.videoFilters([
@@ -177,13 +160,14 @@ function initializeChristmasVideoService(app) {
                 if (snowPath) {
                   command.complexFilter([
                     `[0:v]eq=brightness=0.05:saturation=1.3:contrast=1.1,curves=preset=lighter[v0]`,
-                    `[1:v]scale=${width}:${height}[snow]`,
-                    '[v0][snow]overlay=format=auto[v]',
+                    `[1:v]scale=${width}:${height},format=rgba[snow]`,
+                    '[v0][snow]overlay=0:0:format=auto:alpha=premultiplied[v]',
                     '[0:a:0]volume=0.7[a0]',
                     '[2:a]volume=0.3,aloop=loop=-1:size=2e+09[a1]',
                     '[a0][a1]amix=inputs=2:duration=first:normalize=1[a]'
                   ]);
                   command.outputOptions(['-map', '[v]', '-map', '[a]', '-ignore_unknown']);
+                  console.log(`❄️  Using snow overlay with music: ${snowPath}`);
                 } else {
                   command.complexFilter([
                     '[0:a:0]volume=0.7[a0]',
