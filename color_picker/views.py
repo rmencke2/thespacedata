@@ -1,5 +1,7 @@
 # color_picker/views.py
+import uuid
 from io import BytesIO
+from pathlib import Path
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -8,8 +10,17 @@ from django.http import JsonResponse, HttpResponseBadRequest
 from django.shortcuts import render
 
 from .forms import ImageUploadForm
-from .utils import to_color_obj  # make sure utils.py has to_color_obj (as shown earlier)
+from .utils import to_color_obj
 from colorthief import ColorThief
+
+
+def _safe_filename(original_name: str) -> str:
+    """Generate a safe filename using UUID to prevent path traversal attacks."""
+    ext = Path(original_name).suffix.lower()
+    # Only allow safe image extensions
+    if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}:
+        ext = ".png"
+    return f"{uuid.uuid4()}{ext}"
 
 
 def index(request):
@@ -36,11 +47,12 @@ def extract(request):
     color_count = form.cleaned_data.get("colors") or 9
     try:
         color_count = max(3, min(int(color_count), 12))
-    except Exception:
+    except (TypeError, ValueError):
         color_count = 9
 
-    # Save upload
-    path = default_storage.save(f"uploads/{uploaded.name}", ContentFile(uploaded.read()))
+    # Save upload with safe filename to prevent path traversal
+    safe_name = _safe_filename(uploaded.name)
+    path = default_storage.save(f"uploads/{safe_name}", ContentFile(uploaded.read()))
     # Build URL to the saved media file
     media_prefix = getattr(settings, "MEDIA_URL", "/media/")
     image_url = request.build_absolute_uri(f"{media_prefix}{path}")
@@ -68,10 +80,12 @@ def api_extract(request):
 
     try:
         color_count = max(3, min(int(request.POST.get("colors", 9)), 12))
-    except Exception:
+    except (TypeError, ValueError):
         color_count = 9
 
-    path = default_storage.save(f"uploads/{image.name}", ContentFile(image.read()))
+    # Save upload with safe filename to prevent path traversal
+    safe_name = _safe_filename(image.name)
+    path = default_storage.save(f"uploads/{safe_name}", ContentFile(image.read()))
     media_prefix = getattr(settings, "MEDIA_URL", "/media/")
     image_url = request.build_absolute_uri(f"{media_prefix}{path}")
 

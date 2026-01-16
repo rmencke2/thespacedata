@@ -42,27 +42,30 @@ def generate(request: HttpRequest) -> HttpResponse:
     style    = (form.cleaned_data.get("style") or "").strip()  
     count    = form.cleaned_data.get("count") or 10
 
+    error_message = None
     try:
         names = generate_names(industry=industry, vibe=style, count=count)
+
+        # Only persist successful attempts
+        NameIdea.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            keywords=prompt,
+            industry=industry,
+            style=style,
+            result="\n".join(names),
+        )
     except ServiceError as e:
         log.exception("ServiceError generating names: %s", e)
         names = []
-
-    # Persist attempt (prompt -> keywords, style -> style)
-    NameIdea.objects.create(
-        user=request.user if getattr(request, "user", None) and request.user.is_authenticated else None,
-        keywords=prompt,            
-        industry=industry,
-        style=style,
-        result="\n".join(names),
-    )
+        error_message = "Name generation service is currently unavailable. Please try again later."
 
     ctx: Dict[str, Any] = {
-        "form": form,        
+        "form": form,
         "names": names,
         "industry": industry,
-        "vibe": style,       
+        "vibe": style,
         "keywords": prompt,
         "count": count,
+        "error": error_message,
     }
     return render(request, "name_generator/generate.html", ctx)

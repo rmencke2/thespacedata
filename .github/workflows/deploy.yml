@@ -58,22 +58,44 @@ jobs:
           echo "IMAGE_URI=$ECR/${IMAGE_REPO_NAME}:main" >> $GITHUB_ENV
 
       - name: Create or update App Runner service
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
           SERVICE_ARN=$(aws apprunner list-services \
             --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" \
             --output text)
 
+          # Build environment variables for App Runner
+          ENV_VARS="DJANGO_SETTINGS_MODULE=myproject.settings"
+
+          if [ -n "${DATABASE_URL:-}" ]; then
+            ENV_VARS="${ENV_VARS},DATABASE_URL=${DATABASE_URL}"
+            echo "✓ DATABASE_URL configured (persistent PostgreSQL)"
+          else
+            echo "⚠ DATABASE_URL not set - using ephemeral SQLite"
+          fi
+
+          if [ -n "${DJANGO_SECRET_KEY:-}" ]; then
+            ENV_VARS="${ENV_VARS},DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}"
+          fi
+
+          if [ -n "${OPENAI_API_KEY:-}" ]; then
+            ENV_VARS="${ENV_VARS},OPENAI_API_KEY=${OPENAI_API_KEY}"
+          fi
+
           if [ -z "$SERVICE_ARN" ] || [ "$SERVICE_ARN" = "None" ]; then
             echo "Creating new App Runner service..."
             aws apprunner create-service \
               --service-name "${SERVICE_NAME}" \
-              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={DJANGO_SETTINGS_MODULE=myproject.settings}}},AutoDeploymentsEnabled=true" \
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={${ENV_VARS}}}},AutoDeploymentsEnabled=true" \
               --instance-configuration "Cpu=1 vCPU,Memory=2 GB" \
               --health-check-configuration "Protocol=HTTP,Path=/health/,Interval=10,Timeout=5,HealthyThreshold=1,UnhealthyThreshold=5"
           else
             echo "Updating existing App Runner service..."
             aws apprunner update-service \
               --service-arn "$SERVICE_ARN" \
-              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080}},AutoDeploymentsEnabled=true"
+              --source-configuration "ImageRepository={ImageIdentifier=${IMAGE_URI},ImageRepositoryType=ECR,ImageConfiguration={Port=8080,RuntimeEnvironmentVariables={${ENV_VARS}}}},AutoDeploymentsEnabled=true"
           fi

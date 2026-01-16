@@ -111,14 +111,25 @@ TEMPLATES = [
 WSGI_APPLICATION = "myproject.wsgi.application"
 
 # -----------------------------------------------------------------------------
-# Database (SQLite by default; easy to swap later)
+# Database
 # -----------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.getenv("SQLITE_PATH", "/tmp/db.sqlite3"),
+# Use PostgreSQL in production if DATABASE_URL is set, otherwise SQLite
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Production: PostgreSQL
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    # Development: SQLite in project directory (persistent, not /tmp)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.getenv("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        }
+    }
 
 # -----------------------------------------------------------------------------
 # Password validation
