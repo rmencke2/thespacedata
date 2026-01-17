@@ -4,6 +4,58 @@
 
 const { getDatabase } = require('../database');
 const nodemailer = require('nodemailer');
+const https = require('https');
+
+// Simple IP to country lookup cache
+const ipCountryCache = new Map();
+
+/**
+ * Get country from IP address using free ip-api.com service
+ */
+async function getCountryFromIP(ip) {
+  // Skip local/private IPs
+  if (!ip || ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+    return 'Local';
+  }
+
+  // Check cache first
+  if (ipCountryCache.has(ip)) {
+    return ipCountryCache.get(ip);
+  }
+
+  try {
+    const country = await new Promise((resolve, reject) => {
+      const req = https.get(`https://ip-api.com/json/${ip}?fields=country,countryCode`, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve(json.country || 'Unknown');
+          } catch {
+            resolve('Unknown');
+          }
+        });
+      });
+      req.on('error', () => resolve('Unknown'));
+      req.setTimeout(2000, () => {
+        req.destroy();
+        resolve('Unknown');
+      });
+    });
+
+    // Cache for 24 hours (max 10000 entries)
+    if (ipCountryCache.size > 10000) {
+      const firstKey = ipCountryCache.keys().next().value;
+      ipCountryCache.delete(firstKey);
+    }
+    ipCountryCache.set(ip, country);
+
+    return country;
+  } catch {
+    return 'Unknown';
+  }
+}
 
 // Create email transporter (reuse config from emailService)
 function createTransporter() {
@@ -60,12 +112,16 @@ async function initializeAnalyticsTables(db) {
           page TEXT NOT NULL,
           user_id INTEGER,
           ip_address TEXT,
+          country TEXT,
           user_agent TEXT,
           referrer TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         )
       `);
+
+      // Add country column if it doesn't exist (for existing databases)
+      db.db.run(`ALTER TABLE page_views ADD COLUMN country TEXT`, () => {});
 
       // Indexes for performance
       db.db.run('CREATE INDEX IF NOT EXISTS idx_service_analytics_service ON service_analytics(service_name)');
@@ -81,12 +137,12 @@ async function initializeAnalyticsTables(db) {
 /**
  * Log a page view
  */
-async function logPageView(page, userId, ipAddress, userAgent, referrer) {
+async function logPageView(page, userId, ipAddress, userAgent, referrer, country = null) {
   const db = await getDatabase();
   return new Promise((resolve, reject) => {
     db.db.run(
-      'INSERT INTO page_views (page, user_id, ip_address, user_agent, referrer) VALUES (?, ?, ?, ?, ?)',
-      [page, userId, ipAddress, userAgent, referrer],
+      'INSERT INTO page_views (page, user_id, ip_address, country, user_agent, referrer) VALUES (?, ?, ?, ?, ?, ?)',
+      [page, userId, ipAddress, country, userAgent, referrer],
       (err) => {
         if (err) reject(err);
         else resolve();
@@ -238,6 +294,23 @@ async function getAnalytics(days = 1) {
     );
   });
 
+  // 10. Visitors by country
+  analytics.visitorsByCountry = await new Promise((resolve, reject) => {
+    db.db.all(
+      `SELECT country, COUNT(DISTINCT ip_address) as visitors
+       FROM page_views
+       WHERE created_at > ? AND country IS NOT NULL AND country != ''
+       GROUP BY country
+       ORDER BY visitors DESC
+       LIMIT 15`,
+      [since],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      }
+    );
+  });
+
   return analytics;
 }
 
@@ -328,6 +401,14 @@ async function sendAnalyticsEmail(recipientEmail, days = 1) {
   // Build recommendations list
   const recommendationsList = recommendations.map(r => `<li style="margin-bottom: 8px;">${r}</li>`).join('');
 
+  // Build country table rows
+  const countryRows = analytics.visitorsByCountry.map(c => `
+    <tr>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${c.country || 'Unknown'}</td>
+      <td style="padding: 6px 8px; border-bottom: 1px solid #eee; text-align: center;">${c.visitors}</td>
+    </tr>
+  `).join('');
+
   let fromAddress = process.env.EMAIL_FROM || 'analytics@influzer.ai';
   if (process.env.EMAIL_SERVICE === 'gmail' && process.env.EMAIL_USER) {
     fromAddress = process.env.EMAIL_USER;
@@ -410,6 +491,23 @@ async function sendAnalyticsEmail(recipientEmail, days = 1) {
             </div>
 
             <div class="section">
+              <div class="section-title">Visitors by Country</div>
+              ${analytics.visitorsByCountry.length > 0 ? `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Country</th>
+                    <th style="text-align: center;">Visitors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${countryRows}
+                </tbody>
+              </table>
+              ` : '<p style="color: #666;">No country data available yet.</p>'}
+            </div>
+
+            <div class="section">
               <div class="section-title">Recommendations</div>
               <div class="recommendations">
                 <ul style="margin: 0; padding-left: 20px;">
@@ -442,6 +540,10 @@ SERVICE USAGE
 =============
 ${analytics.serviceUsage.map(s => `${s.service_name}: ${s.total_calls} total (${s.successful} success, ${s.failed} failed)`).join('\n')}
 
+VISITORS BY COUNTRY
+===================
+${analytics.visitorsByCountry.map(c => `${c.country || 'Unknown'}: ${c.visitors} visitors`).join('\n') || 'No country data available yet.'}
+
 RECOMMENDATIONS
 ===============
 ${recommendations.map(r => `- ${r}`).join('\n')}
@@ -471,12 +573,20 @@ function trackPageViews(app) {
     if (req.method === 'GET' && !req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/)) {
       try {
         const userId = req.user?.id || req.session?.userId || null;
-        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+        const forwardedFor = req.headers['x-forwarded-for'];
+        const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : req.ip || req.connection?.remoteAddress;
         const userAgent = req.headers['user-agent'];
         const referrer = req.headers['referer'] || req.headers['referrer'];
 
-        // Don't await - fire and forget to not slow down requests
-        logPageView(req.path, userId, ipAddress, userAgent, referrer).catch(() => {});
+        // Fire and forget - don't slow down requests
+        (async () => {
+          try {
+            const country = await getCountryFromIP(ipAddress);
+            await logPageView(req.path, userId, ipAddress, userAgent, referrer, country);
+          } catch {
+            // Silently ignore
+          }
+        })();
       } catch (e) {
         // Silently ignore tracking errors
       }
