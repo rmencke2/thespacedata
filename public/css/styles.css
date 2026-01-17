@@ -142,19 +142,19 @@ body {
 /* Auth Buttons */
 .auth-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .auth-btn {
   font-family: var(--font-ui);
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--color-charcoal);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -166,18 +166,16 @@ body {
 
 .auth-btn.secondary:hover {
   color: var(--color-charcoal);
-  background: var(--color-cream-dark);
 }
 
 .auth-btn.primary {
-  background: var(--color-terracotta);
+  background: var(--color-charcoal);
   color: white;
-  padding: 10px 24px;
+  padding: 8px 18px;
 }
 
 .auth-btn.primary:hover {
-  background: var(--color-terracotta-hover);
-  transform: translateY(-1px);
+  background: var(--color-ink);
 }
 
 /* User Info */
@@ -342,21 +340,22 @@ body {
 }
 
 .hero-cta {
-  font-size: 1.0625rem;
-  padding: 18px 40px;
+  font-size: 0.9375rem;
+  padding: 14px 32px;
 }
 
 .hero-cta.large {
-  font-size: 1.125rem;
-  padding: 20px 48px;
-  background: var(--color-terracotta);
-  box-shadow: 0 4px 20px rgba(198, 93, 59, 0.35);
+  font-size: 0.9375rem;
+  padding: 14px 36px;
+  background: var(--color-charcoal);
+  box-shadow: none;
+  border-radius: var(--radius-sm);
 }
 
 .hero-cta.large:hover {
-  background: var(--color-terracotta-hover);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 30px rgba(198, 93, 59, 0.4);
+  background: var(--color-ink);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .hero-badge {
