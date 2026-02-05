@@ -25,6 +25,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
+    path("privacy-policy/", views.privacy_policy, name="privacy_policy"),
+    path("support/", views.support, name="support"),
     path("admin/", admin.site.urls),
     path("color/", include("color_picker.urls")),
     path("names/", include("name_generator.urls", namespace="name_generator")),

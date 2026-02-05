@@ -3,9 +3,11 @@
 import httpx
 from langchain_core.tools import tool
 from datetime import datetime, timedelta
+import re
 
 from ..config import settings
 from ..competitors import COMPETITORS, get_competitor
+from .rss_utils import fetch_recent_feed_entries, format_feed_entries
 
 
 @tool
@@ -48,8 +50,17 @@ def competitor_news(
     # Calculate date range
     date_from = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
-    # If no search API, provide guidance
+    # If no search API, fall back to official blog RSS/Atom when possible
     if not settings.SEARCH_API_KEY:
+        entries = fetch_recent_feed_entries(
+            competitor.blog_url or f"https://{competitor.domain}/blog",
+            days_back=days_back,
+            max_items=10,
+            timeout_s=settings.TIMEOUT,
+        )
+        if entries:
+            return format_feed_entries(entries, f"## Recent Official Updates (feed): {competitor.name}")
+
         return f"""[Competitor News Search - No SEARCH_API_KEY configured]
 
 To search for {competitor.name} news, I would search for:
@@ -62,10 +73,35 @@ Suggested manual sources to check:
 - TechCrunch: https://techcrunch.com/search/{competitor.name}
 - Product Hunt: https://www.producthunt.com/search?q={competitor.name}
 
-To enable automatic search, set SEARCH_API_KEY in your .env file (Tavily recommended)."""
+To enable automatic search, set SEARCH_API_KEY in your .env file (Tavily recommended; or set SEARCH_PROVIDER=serper)."""
 
     # Use Tavily API for search
     try:
+        if (settings.SEARCH_PROVIDER or "tavily").strip().lower() == "serper":
+            # Serper doesn't support include_domains filtering like Tavily; keep query focused.
+            response = httpx.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": settings.SEARCH_API_KEY},
+                json={"q": f"{query} since:{date_from}", "num": 10},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            results = []
+            for r in data.get("organic", [])[:10]:
+                results.append(
+                    f"**{r.get('title', 'No title')}**\n"
+                    f"URL: {r.get('link', 'N/A')}\n"
+                    f"Published: {r.get('date', 'Unknown')}\n"
+                    f"{r.get('snippet', '')}\n"
+                )
+
+            if not results:
+                return f"No recent news found for {competitor.name} in the last {days_back} days."
+
+            return f"## Recent News: {competitor.name}\n\n" + "\n---\n".join(results)
+
         response = httpx.post(
             "https://api.tavily.com/search",
             json={
@@ -129,6 +165,19 @@ def competitor_features(competitor_name: str) -> str:
 
     if not settings.SEARCH_API_KEY:
         blog_url = competitor.blog_url or f"https://{competitor.domain}/blog"
+        entries = fetch_recent_feed_entries(
+            blog_url,
+            days_back=14,
+            max_items=10,
+            timeout_s=settings.TIMEOUT,
+        )
+        if entries:
+            # Light heuristic filter: feature-ish titles first
+            feature_terms = ("release", "launch", "introduc", "new", "update", "announc", "ai", "editor", "commerce", "ecommerce")
+            featured = [e for e in entries if any(t in (e.title or "").lower() for t in feature_terms)]
+            chosen = featured[:8] or entries[:8]
+            return format_feed_entries(chosen, f"## Recent Official Feature/Update Posts (feed): {competitor.name}")
+
         return f"""[Feature Search - No SEARCH_API_KEY configured]
 
 To find {competitor.name} feature updates, check:
@@ -139,9 +188,32 @@ To find {competitor.name} feature updates, check:
 
 Query I would search: "{query}"
 
-To enable automatic search, set SEARCH_API_KEY in your .env file."""
+To enable automatic search, set SEARCH_API_KEY in your .env file (or set SEARCH_PROVIDER=serper)."""
 
     try:
+        if (settings.SEARCH_PROVIDER or "tavily").strip().lower() == "serper":
+            response = httpx.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": settings.SEARCH_API_KEY},
+                json={"q": query, "num": 8},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            results = []
+            for r in data.get("organic", [])[:8]:
+                results.append(
+                    f"**{r.get('title', 'No title')}**\n"
+                    f"URL: {r.get('link', 'N/A')}\n"
+                    f"{r.get('snippet', '')}\n"
+                )
+
+            if not results:
+                return f"No recent feature announcements found for {competitor.name}."
+
+            return f"## Feature Updates: {competitor.name}\n\n" + "\n---\n".join(results)
+
         response = httpx.post(
             "https://api.tavily.com/search",
             json={
@@ -193,3 +265,166 @@ def list_competitors() -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+def _strip_html(text: str) -> str:
+    """Very small HTML-to-text helper (no external deps)."""
+    text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text)
+    text = re.sub(r"(?s)<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _tavily_search(query: str, max_results: int = 8) -> list[dict]:
+    response = httpx.post(
+        "https://api.tavily.com/search",
+        json={
+            "api_key": settings.SEARCH_API_KEY,
+            "query": query,
+            "max_results": max_results,
+            "search_depth": "advanced",
+            "include_answer": False,
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json().get("results", []) or []
+
+
+def _serper_search(query: str, max_results: int = 8) -> list[dict]:
+    response = httpx.post(
+        "https://google.serper.dev/search",
+        headers={"X-API-KEY": settings.SEARCH_API_KEY},
+        json={"q": query, "num": max_results},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json().get("organic", []) or []
+
+
+@tool
+def competitor_install_base(competitor_name: str) -> str:
+    """
+    Find install-base / usage metrics for a competitor (e.g., users, sites, market share).
+
+    This is useful for sizing migration campaigns (e.g., targeting Weebly users).
+
+    Args:
+        competitor_name: Name of the competitor (e.g., "Weebly", "Wix")
+
+    Returns:
+        Evidence-focused results (with source URLs) about install base / usage.
+    """
+    competitor = get_competitor(competitor_name)
+    if not competitor:
+        available = ", ".join([c.name for c in COMPETITORS])
+        return f"Unknown competitor '{competitor_name}'. Available: {available}"
+
+    if not settings.SEARCH_API_KEY:
+        return (
+            f"[Install-base research - No SEARCH_API_KEY configured]\n\n"
+            f"Set SEARCH_API_KEY (and optionally SEARCH_PROVIDER=tavily|serper) to enable automated sizing for {competitor.name}.\n"
+            "Suggested queries:\n"
+            f'- "{competitor.name} number of users"\n'
+            f'- "{competitor.name} number of websites"\n'
+            f'- "how many sites use {competitor.name}"\n'
+            f'- "{competitor.name} market share website builder"\n'
+        )
+
+    # Prefer evidence from primary/credible sources (Square filings/blog, Wikipedia, BuiltWith/W3Techs, etc.)
+    queries = [
+        f'{competitor.name} "number of users"',
+        f'{competitor.name} "millions of users"',
+        f'{competitor.name} "number of websites"',
+        f'how many sites use {competitor.name}',
+        f'{competitor.name} market share "website builder"',
+        f'{competitor.name} Square acquisition users',
+    ]
+
+    provider = (settings.SEARCH_PROVIDER or "tavily").strip().lower()
+    results_lines: list[str] = [f"## Install Base / Usage Signals: {competitor.name}", ""]
+
+    try:
+        seen_urls: set[str] = set()
+        hits: list[tuple[str, str, str]] = []
+
+        for q in queries:
+            if provider == "serper":
+                organic = _serper_search(q, max_results=6)
+                for r in organic:
+                    url = (r.get("link") or "").strip()
+                    if not url or url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    hits.append((r.get("title", "No title"), url, r.get("snippet", "")))
+            else:
+                tav = _tavily_search(q, max_results=6)
+                for r in tav:
+                    url = (r.get("url") or "").strip()
+                    if not url or url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    hits.append((r.get("title", "No title"), url, r.get("content", "")))
+
+            if len(hits) >= 12:
+                break
+
+        if not hits:
+            return f"No install-base/usage results found for {competitor.name}."
+
+        results_lines.append("**Top sources to review (evidence + citations):**")
+        for title, url, snippet in hits[:12]:
+            snippet = _strip_html(snippet)[:400]
+            results_lines.append(f"- **{title}**")
+            results_lines.append(f"  - URL: {url}")
+            if snippet:
+                results_lines.append(f"  - Snippet: {snippet}")
+
+        results_lines.append("")
+        results_lines.append(
+            "If you want, I can also produce a **migration TAM estimate** by triangulating these sources (and explicitly flagging confidence/assumptions)."
+        )
+        return "\n".join(results_lines)
+
+    except Exception as e:
+        return f"Install-base search failed: {str(e)}"
+
+
+@tool
+def competitor_service_snapshot(competitor_name: str) -> str:
+    """
+    Snapshot a competitor's official product/pricing messaging from their own pages.
+
+    This is designed for campaign positioning (e.g., what Weebly emphasizes today).
+    """
+    competitor = get_competitor(competitor_name)
+    if not competitor:
+        available = ", ".join([c.name for c in COMPETITORS])
+        return f"Unknown competitor '{competitor_name}'. Available: {available}"
+
+    urls = [
+        f"https://{competitor.domain}/",
+        competitor.pricing_url,
+        competitor.blog_url,
+    ]
+    urls = [u for u in urls if u]
+
+    sections: list[str] = [f"## Official Service Snapshot: {competitor.name}", ""]
+    with httpx.Client(follow_redirects=True, timeout=settings.TIMEOUT) as client:
+        for url in urls:
+            try:
+                r = client.get(url, headers={"User-Agent": "research-assistant/0.1 (+snapshot)"})
+                if r.status_code >= 400 or not r.text:
+                    sections.append(f"### {url}\n- Status: HTTP {r.status_code}\n")
+                    continue
+
+                text = _strip_html(r.text)
+                excerpt = text[:1200]
+                sections.append(f"### {url}")
+                sections.append(f"- Status: HTTP {r.status_code}")
+                sections.append(f"- Excerpt: {excerpt}")
+                sections.append("")
+            except Exception as e:
+                sections.append(f"### {url}\n- Error: {str(e)}\n")
+
+    return "\n".join(sections)

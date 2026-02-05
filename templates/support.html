@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Support - thespacedata{% endblock %}
+
+{% block page_heading %}
+<h1 class="text-3xl font-bold mb-6">Support</h1>
+{% endblock %}
+
+{% block content %}
+<div class="prose prose-lg max-w-none">
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Get Help</h2>
+    <p class="mb-4">
+      We're here to help! If you have questions, need assistance, or want to report an issue, 
+      please reach out to us using one of the methods below.
+    </p>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Contact Information</h2>
+    <div class="bg-slate-50 rounded-lg p-6 mb-4">
+      <p class="mb-2"><strong>Email:</strong> <a href="mailto:support@thespacedata.com" class="text-indigo-600 hover:underline">support@thespacedata.com</a></p>
+      <p class="mb-2"><strong>Response Time:</strong> We typically respond within 24-48 hours</p>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Frequently Asked Questions</h2>
+    
+    <div class="space-y-6">
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h3 class="text-xl font-semibold mb-2">How do I use the Color Picker?</h3>
+        <p class="text-slate-700">
+          The Color Picker allows you to explore and select colors for your projects. 
+          Simply browse through the color palette, select colors, and generate palettes that work well together.
+        </p>
+      </div>
+
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h3 class="text-xl font-semibold mb-2">Can I download the logos I generate?</h3>
+        <p class="text-slate-700">
+          Yes! Once you generate a logo using our Logo Generator, you can download it in various formats. 
+          The download options will be available after generation.
+        </p>
+      </div>
+
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h3 class="text-xl font-semibold mb-2">Is my data secure?</h3>
+        <p class="text-slate-700">
+          Yes, we take data security seriously. Please review our 
+          <a href="{% url 'privacy_policy' %}" class="text-indigo-600 hover:underline">Privacy Policy</a> 
+          for detailed information about how we protect your data.
+        </p>
+      </div>
+
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h3 class="text-xl font-semibold mb-2">Are the services free?</h3>
+        <p class="text-slate-700">
+          Many of our tools are available for free use. Some advanced features may require a subscription. 
+          Check individual tool pages for specific pricing information.
+        </p>
+      </div>
+
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h3 class="text-xl font-semibold mb-2">How do I report a bug?</h3>
+        <p class="text-slate-700">
+          If you encounter a bug or technical issue, please email us at 
+          <a href="mailto:support@thespacedata.com" class="text-indigo-600 hover:underline">support@thespacedata.com</a> 
+          with a description of the issue and steps to reproduce it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Account Issues</h2>
+    <p class="mb-4">
+      Having trouble with your account? Common issues include:
+    </p>
+    <ul class="list-disc list-inside mb-4 space-y-2">
+      <li>Forgotten password - Use the password reset link on the login page</li>
+      <li>Account locked - Contact support for assistance</li>
+      <li>Email verification - Check your spam folder for verification emails</li>
+    </ul>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Feature Requests</h2>
+    <p class="mb-4">
+      Have an idea for a new feature or improvement? We'd love to hear from you! 
+      Send your suggestions to <a href="mailto:support@thespacedata.com" class="text-indigo-600 hover:underline">support@thespacedata.com</a>.
+    </p>
+  </section>
+
+  <section class="mb-8 bg-indigo-50 rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">Still Need Help?</h2>
+    <p class="mb-4">
+      If you can't find what you're looking for, don't hesitate to reach out. 
+      Our support team is ready to assist you.
+    </p>
+    <a href="mailto:support@thespacedata.com" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
+      Contact Support
+    </a>
+  </section>
+</div>
+{% endblock %}

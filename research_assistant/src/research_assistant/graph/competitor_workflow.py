@@ -64,6 +64,22 @@ For each area, find:
 - Any pricing changes or new plans
 - Major news, partnerships, or strategic moves
 
+If focus includes install_base:
+- Find install-base / usage signals (e.g., number of users/sites, market share)
+- Prefer credible sources (company filings, reputable market datasets) and cite URLs
+
+If focus includes service:
+- Pull current official messaging from {competitor}'s website (home/pricing/blog)
+- Summarize positioning relevant to a migration campaign
+
+If {competitor} is a public company (has a stock ticker):
+- Use competitor_financial_overview to get comprehensive financial data including:
+  * Current stock price and recent price movement
+  * Cash balance and cash flow
+  * Profit margins (gross, operating, net)
+  * Recent stock-related news that may have affected the stock price
+- Include a financial overview section in your findings
+
 Be thorough and cite your sources."""
 
         result = analyst.invoke({"messages": [HumanMessage(content=query)]})
@@ -122,9 +138,15 @@ Create a concise, actionable report with:
    - Pricing changes
    - Strategic moves (partnerships, acquisitions, etc.)
 
-3. **Competitive Implications for Webnode** - What should Webnode consider in response?
+3. **Financial Overview** - For public competitors (Wix, GoDaddy, Squarespace), include:
+   - Current stock price and recent performance
+   - Key financial metrics (cash balance, cash flow, profit margins)
+   - Recent stock-related news and its potential impact
+   - Financial health indicators
 
-4. **Items to Watch** - Developments that need continued monitoring
+4. **Competitive Implications for Webnode** - What should Webnode consider in response?
+
+5. **Items to Watch** - Developments that need continued monitoring
 
 Keep the report concise but actionable. Focus on intelligence that matters for strategic decisions."""
 

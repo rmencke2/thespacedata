@@ -11,11 +11,17 @@ from datetime import datetime
 from pathlib import Path
 
 from . import __version__
-from .config import validate_config, ConfigError
+from .config import validate_config, ConfigError, settings
 from .graph.workflow import run_research
 from .graph.competitor_workflow import run_competitor_report
 from .competitors import COMPETITORS, get_all_competitor_names
 from .email_sender import send_report_email, EmailConfig
+from .tools.competitor_news import (
+    competitor_news,
+    competitor_features,
+    competitor_install_base,
+    competitor_service_snapshot,
+)
 
 app = typer.Typer(
     name="research-assistant",
@@ -177,10 +183,18 @@ def competitors(
 
     Monitors: Wix, Duda, GoDaddy, Hostinger, One.com, Basekit, Squarespace, Weebly
 
+    For public competitors (Wix, GoDaddy, Squarespace), includes financial overview:
+    - Stock price and recent performance
+    - Cash balance and cash flow
+    - Profit margins
+    - Stock-related news
+
     Examples:
         research-assistant competitors              # Quick report on all
         research-assistant competitors Wix          # Focus on Wix only
         research-assistant competitors --focus pricing  # Focus on pricing changes
+        research-assistant competitors --focus install_base  # Install base / usage sizing (migration campaigns)
+        research-assistant competitors --focus service  # Official product/pricing messaging snapshot
         research-assistant competitors -o report.md # Save to file
     """
     # Determine which competitors to analyze
@@ -193,9 +207,9 @@ def competitors(
 
     # Determine focus areas
     if focus:
-        focus_areas = [focus] if focus != "all" else ["features", "pricing", "news"]
+        focus_areas = [focus] if focus != "all" else ["features", "pricing", "news", "install_base", "service"]
     else:
-        focus_areas = ["features", "pricing", "news"]
+        focus_areas = ["features", "pricing", "news", "install_base", "service"]
 
     console.print(Panel(f"[bold]{title}[/]\n\nAnalyzing: {', '.join(competitor_list)}\nFocus: {', '.join(focus_areas)}", style="blue"))
 
@@ -362,6 +376,151 @@ def weekly_report(
             print_error(f"Failed to send email: {e}")
 
     console.print(Panel(Markdown(report), title="Report Preview", border_style="green"))
+
+
+@app.command(name="weebly-migration-brief")
+def weebly_migration_brief(
+    days_back: int = typer.Option(
+        14, "--days-back", "-d", help="How many days back to scan for updates"
+    ),
+    format: str = typer.Option(
+        "md",
+        "--format",
+        "-f",
+        help="Output format: md (default), docx, or pptx",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save brief to markdown file"
+    ),
+) -> None:
+    """
+    Generate a Weebly-focused migration campaign brief for Webnode.
+
+    Pulls:
+    - Official Weebly messaging (home/pricing/blog snapshots)
+    - Install base / usage signals (with citations)
+    - Recent updates/news (last N days)
+    Then synthesizes into a migration-ready brief (TAM assumptions clearly flagged).
+    """
+    competitor_name = "Weebly"
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    console.print(
+        Panel(
+            f"[bold]Weebly Migration Brief[/]\n\n"
+            f"Date: {today}\n"
+            f"Competitor: {competitor_name}\n"
+            f"Days back: {days_back}",
+            style="blue",
+        )
+    )
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Gathering Weebly sources...", total=None)
+
+        service = competitor_service_snapshot.invoke({"competitor_name": competitor_name})
+        install_base = competitor_install_base.invoke({"competitor_name": competitor_name})
+        features = competitor_features.invoke({"competitor_name": competitor_name})
+        news = competitor_news.invoke(
+            {"competitor_name": competitor_name, "days_back": days_back, "focus": "all"}
+        )
+
+    # Lazy import so the overall CLI can still load in minimal environments.
+    from langchain_anthropic import ChatAnthropic
+    from langchain_core.messages import HumanMessage
+
+    llm = ChatAnthropic(
+        model=settings.CLAUDE_MODEL,
+        temperature=0.1,
+        max_tokens=8192,
+    )
+
+    prompt = f"""You are a growth + competitive intelligence lead at Webnode.
+
+Create a Weebly migration campaign brief. Be concrete and pragmatic.
+Use ONLY the sources provided below; when you make a claim, cite a URL from the sources.
+If install base numbers are uncertain/conflicting, present a range and explicitly flag confidence.
+
+Date: {today}
+
+## Source Pack: Official Weebly Service Messaging
+{service}
+
+## Source Pack: Install Base / Usage Signals
+{install_base}
+
+## Source Pack: Recent Feature/Update Posts
+{features}
+
+## Source Pack: Recent News/Announcements (last {days_back} days)
+{news}
+
+## Output format
+1) Executive summary (5 bullets max)
+2) What Weebly is today (positioning, target segments, product strengths/weaknesses) + citations
+3) Install base sizing (ranges, assumptions, confidence) + citations
+4) Migration hypotheses (who is most likely to churn; triggers; barriers)
+5) Webnode positioning for Weebly users (3-5 differentiated angles)
+6) Offer & funnel recommendations (pricing/discount, migration support, onboarding)
+7) Targeting & channels (search keywords, partnerships, audiences)
+8) Measurement plan (north-star, leading indicators, experiment design)
+9) Risks & mitigations
+"""
+
+    brief = llm.invoke([HumanMessage(content=prompt)]).content
+
+    console.print(Panel(Markdown(brief), title="Weebly Migration Brief", border_style="green"))
+
+    fmt = (format or "md").strip().lower()
+    if fmt not in ("md", "docx", "pptx"):
+        print_error("Invalid --format. Use: md, docx, or pptx")
+        raise typer.Exit(2)
+
+    if output_file:
+        if fmt == "md":
+            with open(output_file, "w") as f:
+                f.write(f"# Weebly Migration Brief (Webnode)\nGenerated: {today}\n\n{brief}\n")
+            print_success(f"Brief saved to {output_file}")
+            return
+
+        if fmt == "docx":
+            from .exporters.docx_exporter import export_docx, DocxExportOptions
+
+            export_docx(
+                f"# Weebly Migration Brief (Webnode)\n\n**Generated:** {today}\n\n{brief}\n",
+                output_file,
+                options=DocxExportOptions(
+                    title="Weebly Migration Brief (Webnode)",
+                    subtitle=f"Generated: {today}",
+                ),
+            )
+            print_success(f"DOCX saved to {output_file}")
+            return
+
+        if fmt == "pptx":
+            from .exporters.pptx_exporter import export_pptx, PptxExportOptions
+
+            export_pptx(
+                brief,
+                output_file,
+                options=PptxExportOptions(
+                    title="Weebly Migration Brief (Webnode)",
+                    subtitle=f"Generated: {today}",
+                ),
+            )
+            print_success(f"PPTX saved to {output_file}")
+            return
+
+    # If user didn't pass an output file, give a tip for docx/pptx usage.
+    if fmt in ("docx", "pptx"):
+        console.print(
+            f"[yellow]To export {fmt.upper()}, pass --output (e.g. -o ./reports/weebly-brief.{fmt}).[/]"
+        )
 
 
 @app.command()

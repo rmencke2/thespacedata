@@ -12,6 +12,7 @@ class Competitor:
     pricing_url: str | None = None
     blog_url: str | None = None
     keywords: list[str] | None = None
+    ticker: str | None = None  # Stock ticker symbol for public companies (e.g., "WIX", "GDDY")
 
 
 # Webnode's competitors
@@ -22,6 +23,7 @@ COMPETITORS = [
         pricing_url="https://www.wix.com/upgrade/website",
         blog_url="https://www.wix.com/blog",
         keywords=["wix", "wix.com", "wix website builder"],
+        ticker="WIX",
     ),
     Competitor(
         name="Duda",
@@ -36,6 +38,7 @@ COMPETITORS = [
         pricing_url="https://www.godaddy.com/websites/website-builder",
         blog_url="https://www.godaddy.com/resources",
         keywords=["godaddy", "godaddy website builder", "godaddy websites"],
+        ticker="GDDY",
     ),
     Competitor(
         name="Hostinger",
@@ -64,6 +67,7 @@ COMPETITORS = [
         pricing_url="https://www.squarespace.com/pricing",
         blog_url="https://www.squarespace.com/blog",
         keywords=["squarespace", "squarespace website builder"],
+        ticker="SQSP",
     ),
     Competitor(
         name="Weebly",

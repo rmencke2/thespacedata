@@ -94,7 +94,8 @@ Make sure these are available in your cron/scheduled environment:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-export SEARCH_API_KEY=...  # Optional but recommended for better results (Tavily)
+export SEARCH_API_KEY=...  # Optional but recommended for broader coverage
+export SEARCH_PROVIDER=tavily  # Optional: tavily (default) or serper
 ```
 
 ## Email Integration (Optional)

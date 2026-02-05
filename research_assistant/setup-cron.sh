@@ -35,8 +35,8 @@ mkdir -p "$REPORTS_DIR"
 if [ ! -f "${SCRIPT_DIR}/.env" ]; then
     echo ""
     echo "WARNING: No .env file found!"
-    echo "Copy .env.example to .env and configure your API keys:"
-    echo "  cp ${SCRIPT_DIR}/.env.example ${SCRIPT_DIR}/.env"
+    echo "Copy env.example (or .env.example) to .env and configure your API keys:"
+    echo "  cp ${SCRIPT_DIR}/env.example ${SCRIPT_DIR}/.env"
     echo ""
 fi
 

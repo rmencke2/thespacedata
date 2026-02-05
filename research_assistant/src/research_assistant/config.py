@@ -19,7 +19,10 @@ class Settings:
 
     ANTHROPIC_API_KEY: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     CLAUDE_MODEL: str = field(default_factory=lambda: os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514"))
-    SEARCH_API_KEY: str | None = field(default_factory=lambda: os.getenv("SEARCH_API_KEY"))
+    # Web search configuration
+    # SEARCH_PROVIDER: "tavily" (default) or "serper"
+    SEARCH_PROVIDER: str = field(default_factory=lambda: (os.getenv("SEARCH_PROVIDER", "tavily") or "tavily").strip())
+    SEARCH_API_KEY: str | None = field(default_factory=lambda: (os.getenv("SEARCH_API_KEY") or "").strip() or None)
     MAX_ITERATIONS: int = field(default_factory=lambda: int(os.getenv("MAX_ITERATIONS", "10")))
     TIMEOUT: int = field(default_factory=lambda: int(os.getenv("TIMEOUT", "30")))
 

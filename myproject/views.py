@@ -8,3 +8,9 @@ def home(request):
 
 def health(request):
     return JsonResponse({"ok": True})
+
+def privacy_policy(request):
+    return render(request, "privacy-policy.html")
+
+def support(request):
+    return render(request, "support.html")

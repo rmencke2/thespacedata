@@ -35,22 +35,25 @@ class Config:
         'LINK/USD',  # Chainlink - oracle leader
     ]
     
-    # Crypto-Optimized Risk Management
-    MAX_POSITION_SIZE = 0.30  # 30% per position (crypto is volatile)
-    MAX_PORTFOLIO_RISK = 0.04  # 4% risk per trade (higher than stocks)
-    MAX_POSITIONS = 5  # 5 concurrent positions
-    DAILY_LOSS_LIMIT = 0.12  # 12% daily loss limit (crypto recovers fast)
-    STOP_LOSS_PERCENT = 0.06  # 6% stop loss (wider for crypto volatility)
+    # Risk Management
+    INITIAL_CAPITAL = 20000
+    MAX_POSITIONS = 5
+    RISK_PER_TRADE = 0.04
+    STOP_LOSS_PERCENT = 0.08      # ← ADD THIS (8% for crypto vs 4% stocks)
+    DAILY_LOSS_LIMIT = 0.12
+    MAX_POSITION_SIZE = 0.30
+
     
     # CRYPTO Strategy Parameters (tuned for 24/7 volatility)
     MEAN_REVERSION_PERIOD = 20  # Standard period
-    MEAN_REVERSION_STD = 1.3  # Sensitive (crypto swings hard)
+    MEAN_REVERSION_STD = 1.5  # Sensitive (crypto swings hard)
     
     MOMENTUM_FAST_PERIOD = 10
     MOMENTUM_SLOW_PERIOD = 30
     MOMENTUM_RSI_PERIOD = 14
-    MOMENTUM_RSI_OVERSOLD = 35  # Crypto oversold
-    MOMENTUM_RSI_OVERBOUGHT = 65  # Crypto overbought
+    MOMENTUM_RSI_OVERSOLD = 25  # Crypto oversold
+    MOMENTUM_RSI_OVERBOUGHT = 75  # Crypto overbought
+    TAKE_PROFIT_PERCENT = 0.15    # 15% profit targets for crypto
     
     # Data Configuration
     BACKTEST_START_DATE = "2023-01-01"
