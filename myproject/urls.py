@@ -27,6 +27,7 @@ urlpatterns = [
     path("health/", views.health, name="health"),
     path("privacy-policy/", views.privacy_policy, name="privacy_policy"),
     path("support/", views.support, name="support"),
+    path("support.html", views.support_influzer, name="support_influzer"),
     path("admin/", admin.site.urls),
     path("color/", include("color_picker.urls")),
     path("names/", include("name_generator.urls", namespace="name_generator")),

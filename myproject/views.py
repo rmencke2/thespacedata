@@ -14,3 +14,8 @@ def privacy_policy(request):
 
 def support(request):
     return render(request, "support.html")
+
+
+def support_influzer(request):
+    """Standalone Influzer support page for influzer.ai/support.html"""
+    return render(request, "support_influzer.html")
