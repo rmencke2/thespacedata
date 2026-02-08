@@ -491,8 +491,8 @@
           previewDiv.innerHTML = `
             <img src="${pngPath}" alt="Logo Preview (PNG)" />
             <div class="downloads">
-              <a href="${svgPath}" download data-i18n="preview.downloadSvg">${window.i18n.t('preview.downloadSvg')}</a>
-              <a href="${pngPath}" download data-i18n="preview.downloadPng">${window.i18n.t('preview.downloadPng')}</a>
+              <a href="#" class="logo-download-link" data-download-url="${svgPath}" data-i18n="preview.downloadSvg">${window.i18n.t('preview.downloadSvg')}</a>
+              <a href="#" class="logo-download-link" data-download-url="${pngPath}" data-i18n="preview.downloadPng">${window.i18n.t('preview.downloadPng')}</a>
             </div>
             <div class="format-info">
               <strong data-i18n="preview.formatGuide">${window.i18n.t('preview.formatGuide')}</strong><br>
@@ -1068,15 +1068,20 @@
           });
         }
 
-        // Start Logo button - opens signup for non-logged users, shows logo generator for logged users
+        // Start Logo button - show logo generator for everyone (no sign-up required to try it)
         const startLogoBtn = document.getElementById('startLogoBtn');
         if (startLogoBtn) {
           startLogoBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof window.openSignupModal === 'function') {
-              window.openSignupModal();
-            }
+            const homepage = document.getElementById('homepage');
+            const logoGenerator = document.getElementById('logoGenerator');
+            if (homepage) homepage.style.display = 'none';
+            if (logoGenerator) logoGenerator.style.display = 'block';
+            setTimeout(() => {
+              if (typeof loadAllFooters === 'function') loadAllFooters();
+              if (window.i18n && window.i18n.updateTranslations) window.i18n.updateTranslations();
+            }, 100);
           });
         }
 
@@ -1153,6 +1158,29 @@
           // Remove query param
           window.history.replaceState({}, document.title, window.location.pathname);
         }
+        
+        // Gate logo download links: require sign-up, then allow download
+        document.addEventListener('click', (e) => {
+          const link = e.target.closest('a.logo-download-link');
+          if (!link) return;
+          e.preventDefault();
+          const url = link.getAttribute('data-download-url');
+          if (!url) return;
+          if (!currentUser) {
+            sessionStorage.setItem('pendingLogoDownload', url);
+            if (typeof window.openSignupModal === 'function') {
+              window.openSignupModal();
+            }
+            return;
+          }
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = url.split('/').pop() || 'logo';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
       });
 
       // Authentication functions
@@ -1167,6 +1195,20 @@
             updateAuthUI(data.user);
             loadUsageLimits();
             loadAds();
+            // If user just signed up to download, trigger the pending download
+            const pendingDownload = sessionStorage.getItem('pendingLogoDownload');
+            if (pendingDownload) {
+              sessionStorage.removeItem('pendingLogoDownload');
+              setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = pendingDownload;
+                a.download = pendingDownload.split('/').pop() || 'logo';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }, 300);
+            }
           } else {
             currentUser = null;
             updateAuthUI(null);
