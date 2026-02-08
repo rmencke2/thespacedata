@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Influzer needs access to your photos so you can select an image for your brand asset.",
+        "NSPhotoLibraryAddUsageDescription": "Influzer needs permission to save exported assets to your photo library."
+      }
     },
     "android": {
       "adaptiveIcon": {
