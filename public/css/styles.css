@@ -339,6 +339,12 @@ body {
   box-shadow: var(--shadow-strong);
 }
 
+.motivations-app-store-btn:hover {
+  background: var(--color-ink) !important;
+  color: var(--color-cream) !important;
+  transform: translateY(-2px);
+}
+
 .cta-button.secondary {
   background: transparent;
   color: var(--color-charcoal);
