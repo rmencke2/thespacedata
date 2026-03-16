@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
@@ -34,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -43,23 +42,17 @@ app-example
 # generated native folders
 /ios
 /android
-=======
-# Python
+
+# Python (if any in repo)
 venv/
 .venv/
 __pycache__/
 *.py[cod]
 
-# Node
-node_modules/
-
-# Build artifacts - generated output files (user-generated content, not source code)
-# Exclude all generated directories and their contents
+# Build artifacts
 generated_*/
 generated_img/
 generated_video/
-
-# Exclude all large media files that might be generated
 *.gif
 *.mp4
 *.avi
@@ -70,49 +63,24 @@ generated_video/
 *.3gp
 *.wmv
 
-# Editor files
-.DS_Store
-
-# Migration tool venv
-migration-tool/.venv/
-
-# Docker files
+# Docker
 Dockerfile*
-.env
 
-# Database files
+# Database
 *.db
 *.sqlite
 *.sqlite3
->>>>>>> logo/main
-=======
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.egg-info/
-.env
-.venv
-venv/
-ENV/
-
-# Django
 db.sqlite3
 staticfiles/
 media/
 
-# OS / IDE
-.DS_Store
+# IDE / OS
 .idea/
 .vscode/
 *.log
-
-# Docker
 *.pid
-
-# Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
->>>>>>> origin/main
+
+migration-tool/.venv/
